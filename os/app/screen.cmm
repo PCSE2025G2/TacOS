@@ -1,0 +1,10 @@
+char[][][] screenDat = {
+{
+{'\x00'} //各画面の縦方向の定義
+}
+};
+public char[][] screen(char code) {
+  if (ord(code)==0x01) return screenDat[0];
+  if (ord(code)==0x02) return screenDat[1];
+  return screenDat[ord(code)];
+}

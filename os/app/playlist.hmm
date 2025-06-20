@@ -1,0 +1,8 @@
+/*
+ * playlist.hmm : 液晶ディスプレイのドライバ
+ *
+ * 2020.08.23 : 新規作成
+ *
+ */
+
+public void playlistMain();  
