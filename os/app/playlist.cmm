@@ -1,0 +1,10 @@
+/*
+ * playlist.cmm : 字形をビットマップで返す
+
+ */
+public void playlistMain(){
+    ;
+}
+void saveplaylist(char[] playlist){
+    ;
+}

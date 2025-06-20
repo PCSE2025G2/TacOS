@@ -20,14 +20,9 @@
  */
 
 /*
- * mp3Files.hmm : MP3ファイルの一覧
+ * screen.hmm : 字形をビットマップで返す
  *
- * 2020.09.16 : 新規作成
- *
- * $Id$
+ * 2020.08.23 : 新規作成
  *
  */
-
-public void mp3FilesInit();               // 初期化（ファイル一覧を作る）
-public char[] mp3FilesGetName(int n);     // n 番目ファイル名を返す
-public char[] mp3FilesGetPath(int n);     // n 番目パス名を返す
+public char[][] screen(char code);
