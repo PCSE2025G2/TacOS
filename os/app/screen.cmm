@@ -1,10 +1,51 @@
 char[][][] screenDat = {
-{
-{'\x00'} //各画面の縦方向の定義
-}
+  // Menu 画面
+  {
+    "Menu",
+    "Play songs",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "d"
+  },
+  // Play songs 画面
+  {
+    "Play songs",
+    "song selection",
+    "a",
+    "b",
+    "back",
+    "",
+    "",
+    ""
+  },
+  // Song selection 画面
+  {
+    "Song selection",
+    "audio",
+    "a",
+    "b",
+    "a",
+    "b",
+    "c",
+    "c"
+  },
+  // Play control 画面
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "a",
+    "b",
+    "c",
+    "d"
+  }
 };
+
 public char[][] screen(char code) {
-  if (ord(code)==0x01) return screenDat[0];
-  if (ord(code)==0x02) return screenDat[1];
-  return screenDat[ord(code)];
+  int idx = ord(code);
+  return screenDat[idx];
 }
