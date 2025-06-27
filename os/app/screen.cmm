@@ -3,45 +3,127 @@ char[][][] screenDat = {
   {
     "Menu",
     "Play songs",
-    "a",
-    "b",
-    "c",
-    "d",
-    "e",
-    "d"
+    "Edit PlayList",
+    "Tag",
+    "Format",
+    "Help",
+    "1:up 3:decision",
+    "4:back 5:down"
   },
-  // Play songs 画面
+  // Play songs（曲再生方法選択）画面
   {
     "Play songs",
-    "song selection",
-    "a",
-    "b",
-    "back",
+    "Song selection",
+    "History",
+    "PlayList",
+    "Back",
     "",
     "",
     ""
   },
-  // Song selection 画面
+  // Song selection（曲選択）画面
   {
     "Song selection",
-    "audio",
-    "a",
-    "b",
-    "a",
-    "b",
-    "c",
-    "c"
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
   },
-  // Play control 画面
+  // History（履歴）画面
+  {
+    "History",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // PlayList（プレイリスト）画面
+  {
+    "PlayList",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // Play control（曲再生）画面
   {
     "",
     "Play/Stop",
     "Next",
     "Previous",
-    "a",
-    "b",
-    "c",
-    "d"
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+  // Help（ヘルプ）画面
+  {
+    "Help",
+    "Back",
+    "Menu",
+    ":Play songs",
+    " :Song selection",
+    " :History",
+    " :PlayList",
+    "  :Play control",
+    ":Edit PlayList",
+    ":Tag",
+    ":Format",
+    ":Help <-now!"
+  },
+  // Edit PlayList（プレイリスト編集）画面
+  {
+    "Edit PlayList",
+    " Back",
+    " Register",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // Tag（タグ）画面
+  {
+    "Tag",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // Edit Tag（タグ編集）画面
+  {
+    "Edit Tag",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+
+  },
+  // Format（フォーマット）画面
+  {
+    "Format",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
   }
 };
 
