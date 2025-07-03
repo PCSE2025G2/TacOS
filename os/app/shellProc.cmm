@@ -65,29 +65,37 @@ void asta(int y) {
   putCh('>');
 }
 
+int volume = 3;                                     
 void demoScreen(int screenId, int kersol, int SongIndex) {
   cls();   // LCDをクリアする
   char[][] scr = screen(chr(screenId));
   if (scr == null) return;
 
   for (int row = 0; row < 8; row = row + 1) {
-    if (row == 0) {
-      locateXY(0, row);       // タイトル行は左端から表示
-      putStr(scr[row]);
-    } else {
-      locateXY(1, row);       // それ以外の行は1マス開けて表示
-      putStr(scr[row]);
-    }
+      if (row == 0) {
+        locateXY(0, row);       // タイトル行は左端から表示
+        putStr(scr[row]);
+      } else {
+        locateXY(1, row);       // それ以外の行は1マス開けて表示
+        putStr(scr[row]);
+      }
+      if (screenId == 2 && row >= 2 && mp3FilesGetName(row - 1) != null) {  // 曲選択画面でBack以降に曲一覧
+        locateXY(1, row);
+        putStr(mp3FilesGetName(row - 1)); // rowは2から1番目の曲から〜〜〜
+      } 
+      if (screenId == 5 && row == 5) {
+        char[] volStr = _ItoA(volume);   
+        locateXY(8, 5);                  
+        putStr(volStr);                                  
+      }      
   }
+
   if (screenId==5){
     locateXY(0, 0);
     putStr(mp3FilesGetName(SongIndex));
   }
   asta(kersol);
 }
-
-
-
 
 
 //-----------------------------------------------------------------------------
@@ -99,6 +107,8 @@ public void shellMain() {
   int PlayStopFlag = 1;
   int SongIndex = 1;
   int currentScreen = 0;
+  boolean volSelect = false;                          
+
   spiResetLcd();      // sleepを使用するので
   spiResetMp3();      //   プロセスが実行する
   mp3FilesInit();     // ファイル一覧を作る
@@ -108,7 +118,23 @@ public void shellMain() {
     int sw = readSw();
     int num = swToNum(sw);
 
-    if (num == 1 && kersol > 1) {
+    if (volSelect) {
+      kersol = 5; 
+      if (num == 1 && volume < 5) {   // Volume up
+        volume = volume + 1;
+        spiWriteMp3Reg(0x0b, (5 - volume) * 0x101);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } else if (num == 5 && volume > 1) {  // Volume down
+        volume = volume - 1;
+        spiWriteMp3Reg(0x0b, (5 - volume) * 0x101);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } else if (num == 3) {
+        volSelect = false;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      continue; 
+    }
+    else if (num == 1 && kersol > 1) {
       kersol = kersol - 1;
       demoScreen(currentScreen, kersol, SongIndex);
     }
@@ -227,7 +253,6 @@ public void shellMain() {
           PlayStopFlag = 1;
         }
       }
-
       else if (currentScreen == 5 && kersol == 2 && mp3FilesGetName(SongIndex+1)!=null) {
         stop();
         SongIndex = SongIndex + 1;
@@ -237,6 +262,10 @@ public void shellMain() {
         stop();
         SongIndex = SongIndex - 1;
         demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (currentScreen == 5 && kersol == 5) {
+        volSelect = true;  
+        demoScreen(currentScreen, kersol, SongIndex);  
       }
       else if (currentScreen == 5 && kersol ==6) {
         currentScreen = 2;  // 戻る（プレイリストなどにも戻らないといけないので要検討）
