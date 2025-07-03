@@ -29,20 +29,20 @@ public void locateXY(int x, int y) {
 }
 
 // カーソル位置に１文字表示
-public void putCh(char c) {
-  spiWriteLcdDat(font(c), 8);
+public void putCh(char c, int currentFont) {
+  spiWriteLcdDat(font(c, currentFont), 8);
 }
 
 // カーソル位置に文字列表示
-public void putStr(char[] str) {
+public void putStr(char[] str, int currentFont) {
   for (int i=0; str[i]!='\0'; i=i+1) {
-    putCh(str[i]);
+    putCh(str[i], currentFont);
   }
 }
 
 // カーソル位置に桁数を指定して右詰めで10進数を表示
 char[] decBuf = array(6);                   // 16bit int なら最大5桁
-public void putDec(int val, int width) {
+public void putDec(int val, int width, int currentFont) {
   int v = val;
   int w = 1;
   if (v==0) {
@@ -54,18 +54,18 @@ public void putDec(int val, int width) {
     }
   }
   for (int i=w; i<width; i=i+1) {           // 空白で桁数を合わせる
-    putCh(' ');
+    putCh(' ', currentFont);
   }
   for (w=w-1; w>=0; w=w-1) {
-    putCh(decBuf[w]);
+    putCh(decBuf[w], currentFont);
   }
 }
 
-public void cls() {
+public void cls(int currentFont) {
   for (int i=0; i<8; i=i+1) {
     locateXY(0, i);
     for (int j=0; j<16; j=j+1) {
-      putCh(' ');
+      putCh(' ', currentFont);
     }
   }
 }

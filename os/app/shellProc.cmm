@@ -60,39 +60,43 @@ int swToNum(int sw) {
 //-----------------------------------------------------------------------------
 // 画面表示
 //-----------------------------------------------------------------------------
+
+int volume = 3;
+int currentFont = 0;
 void asta(int y) {
   locateXY(0, y);
-  putCh('>');
+  putCh('>', currentFont);
 }
 
-int volume = 3;                                     
+
+
 void demoScreen(int screenId, int kersol, int SongIndex) {
-  cls();   // LCDをクリアする
+  cls(currentFont);   // LCDをクリアする
   char[][] scr = screen(chr(screenId));
   if (scr == null) return;
 
   for (int row = 0; row < 8; row = row + 1) {
       if (row == 0) {
         locateXY(0, row);       // タイトル行は左端から表示
-        putStr(scr[row]);
+        putStr(scr[row], currentFont);
       } else {
         locateXY(1, row);       // それ以外の行は1マス開けて表示
-        putStr(scr[row]);
+        putStr(scr[row], currentFont);
       }
       if (screenId == 2 && row >= 2 && mp3FilesGetName(row - 1) != null) {  // 曲選択画面でBack以降に曲一覧
         locateXY(1, row);
-        putStr(mp3FilesGetName(row - 1)); // rowは2から1番目の曲から〜〜〜
+        putStr(mp3FilesGetName(row - 1), currentFont); // rowは2から1番目の曲から〜〜〜
       } 
       if (screenId == 5 && row == 5) {
         char[] volStr = _ItoA(volume);   
         locateXY(8, 5);                  
-        putStr(volStr);                                  
+        putStr(volStr, currentFont);                                  
       }      
   }
 
   if (screenId==5){
     locateXY(0, 0);
-    putStr(mp3FilesGetName(SongIndex));
+    putStr(mp3FilesGetName(SongIndex), currentFont);
   }
   asta(kersol);
 }
@@ -309,10 +313,15 @@ public void shellMain() {
         kersol = 1;
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else if (currentScreen == 10 && kersol ==1) {
-        currentScreen = 0;  // 戻る
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
+      else if (currentScreen == 10) {
+        if(kersol == 1){
+          currentScreen = 0;  // 戻る
+          kersol = 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+        } else if(kersol >= 2 && kersol <= 7){
+          currentFont = kersol -2; // タイトルとBackのやつを引いてfont(0)から〜〜〜
+          demoScreen(currentScreen, kersol, SongIndex);
+        }
       }
       else if (currentScreen == 0 && kersol == 5) {
         currentScreen = 6;  // ヘルプ画面に遷移

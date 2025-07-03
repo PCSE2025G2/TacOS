@@ -1,4 +1,6 @@
-char[][] fontDat = {
+char[][][] fontDat =
+{
+ {
     { '\x00','\x00','\x00','\x00','\x00','\x00','\x00','\x00' },  // 20( )
     { '\x00','\x00','\x06','\x5f','\x5f','\x06','\x00','\x00' },  // 21(!)
     { '\x00','\x03','\x03','\x00','\x03','\x03','\x00','\x00' },  // 22(")
@@ -94,9 +96,19 @@ char[][] fontDat = {
     { '\x00','\x00','\x00','\x77','\x77','\x00','\x00','\x00' },  // 7c(|)
     { '\x41','\x41','\x77','\x3e','\x08','\x08','\x00','\x00' },  // 7d(})
     { '\x02','\x03','\x01','\x03','\x02','\x03','\x01','\x00' }   // 7e(~)
-  };
-public char[] font(char code) {
-  if (ord(code)<=0x20) return fontDat[0];
-  if (ord(code)>=0x7f) return fontDat[0];
-  return fontDat[ord(code)-0x20];
+  },
+  {
+    { '\x00','\x00','\x00','\x00','\x00','\x00','\x00','\x00' },  // 20( )
+    { '\x00','\x00','\x06','\x5f','\x5f','\x06','\x00','\x00' },  // 21(!)
+    { '\x00','\x03','\x03','\x00','\x03','\x03','\x00','\x00' },  // 22(")
+    { '\x14','\x7f','\x7f','\x14','\x7f','\x7f','\x14','\x00' },  // 23(#)
+    { '\x24','\x2e','\x6b','\x6b','\x3a','\x12','\x00','\x00' },  // 24($)
+    { '\x46','\x66','\x30','\x18','\x0c','\x66','\x62','\x00' },  // 25(%)
+    { '\x30','\x7a','\x4f','\x5d','\x37','\x7a','\x48','\x00' }  // 26(&)
+  } 
+};
+public char[] font(char code, int currentFont) {
+  if (ord(code)<=0x20) return fontDat[currentFont][0];
+  if (ord(code)>=0x7f) return fontDat[currentFont][0];
+  return fontDat[currentFont][ord(code)-0x20];
 }

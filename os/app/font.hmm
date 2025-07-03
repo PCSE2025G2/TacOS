@@ -1,4 +1,4 @@
 /*
  * font.hmm : 字形をビットマップで返す
  */
-public char[] font(char code);
+public char[] font(char code, int currentFont);
