@@ -106,9 +106,9 @@ char[][][] screenDat = {
   {
     "Edit Tag",
     "Back",
-    "",
-    "",
-    "",
+    "Nomal",
+    "Cool",
+    "Happy",
     "",
     "",
     ""
@@ -118,7 +118,7 @@ char[][][] screenDat = {
   {
     "Format",
     "Back",
-    "",
+    "Gothic",
     "",
     "",
     "",
