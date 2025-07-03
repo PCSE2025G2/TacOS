@@ -119,9 +119,9 @@ char[][][] screenDat = {
     "Format",
     "Back",
     "Gothic",
-    "",
-    "",
-    "",
+    "Bold",
+    "Itaric",
+    "outline",
     "",
     ""
   }
