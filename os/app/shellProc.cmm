@@ -61,6 +61,7 @@ int swToNum(int sw) {
 // 画面表示
 //-----------------------------------------------------------------------------
 
+//グローバル変数の定義
 int volume = 3; 
 int speed = 3;   
 int currentFont = 0;
@@ -85,22 +86,25 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
         locateXY(1, row);       // それ以外の行は1マス開けて表示
         putStr(scr[row], currentFont);
       }
-      if (screenId == 2 && row >= 2 && mp3FilesGetName(row - 1) != null) {  // 曲選択画面でBack以降に曲一覧
+      // 2.曲選択画面でBack以降に曲一覧を表示
+      if (screenId == 2 && row >= 2 && mp3FilesGetName(row - 1) != null) {  
         locateXY(1, row);
-        putStr(mp3FilesGetName(row - 1), currentFont); // rowは2から1番目の曲から〜〜〜
+        putStr(mp3FilesGetName(row - 1), currentFont); 
       } 
-      if (screenId == 5 && row == 5) {  
+      // 5. 6. 7.曲再生画面で速度と音量を表示
+      if ((screenId == 5 && row == 5) || (screenId == 6 && row == 5) || (screenId == 7 && row == 5)) {  
         locateXY(8, 4);                  
         putDec(speed, 1, currentFont); 
         locateXY(8, 5);                  
         putDec(volume, 1, currentFont);                                  
       }      
   }
-
-  if (screenId==5){
+  // 5. 6. 7.曲再生画面で現在再生中の曲名を表示
+  if (screenId==5 || screenId==6 || screenId==7){
     locateXY(0, 0);
     putStr(mp3FilesGetName(SongIndex), currentFont);
   }
+  // 現在のカーソル位置を表示
   asta(kersol);
 }
 
@@ -118,7 +122,7 @@ public void shellMain() {
   boolean speedSelect = false;                           
 
   spiResetLcd();      // sleepを使用するので
-  spiResetMp3();      //   プロセスが実行する
+  spiResetMp3();      // プロセスが実行する
   mp3FilesInit();     // ファイル一覧を作る
   demoScreen(currentScreen, kersol, SongIndex);
 
@@ -126,37 +130,38 @@ public void shellMain() {
     int sw = readSw();
     int num = swToNum(sw);
 
-  if (volSelect) {
-      //kersol = 5;
-        if (num == 1 && volume < 5)
-        { // Volume up
-          volume = volume + 1;
-          
-          spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
-          demoScreen(currentScreen, kersol, SongIndex);
-        } else if (num == 5 && volume > 1) {  // Volume down
-          volume = volume - 1;
-          spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
-          demoScreen(currentScreen, kersol, SongIndex);
-      } else if (num == 3) {
-        volSelect = false;
+    // 音量調節
+    if (volSelect) {
+      if (num == 1 && volume < 5){ // Volume up
+        volume = volume + 1;
+        
+        spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } 
+      else if (num == 5 && volume > 1) {  // Volume down
+        volume = volume - 1;
+        spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } 
+      else if (num == 3) {
+      volSelect = false;
       }
     }
+    // 速度調節
     else if (speedSelect) {
-          //kersol = 5;
-            if (num == 1 && speed< 5)
-            { // speedup
-              speed= speed+ 1;
-              spiWriteMp3Reg(0x03, (5 - speed) * 0x186A);
-              demoScreen(currentScreen, kersol, SongIndex);
-            } else if (num == 5 && speed> 1) {  // speeddown
-              speed= speed- 1;
-              spiWriteMp3Reg(0x03, (5 - speed) * 0x186A); 
-              demoScreen(currentScreen, kersol, SongIndex);
-          } else if (num == 3) {
-            speedSelect = false;
+      if (num == 1 && speed< 5){ // speedup
+        speed= speed+ 1;
+        spiWriteMp3Reg(0x03, (5 - speed) * 0x186A);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } else if (num == 5 && speed> 1) {  // speeddown
+        speed= speed- 1;
+        spiWriteMp3Reg(0x03, (5 - speed) * 0x186A); 
+        demoScreen(currentScreen, kersol, SongIndex);
+      } else if (num == 3) {
+      speedSelect = false;
       }
     }
+    //カーソルの上下移動の定義
     else if (num == 1 && kersol > 1) {
       kersol = kersol - 1;
       demoScreen(currentScreen, kersol, SongIndex);
@@ -165,12 +170,13 @@ public void shellMain() {
       kersol = kersol + 1;
       demoScreen(currentScreen, kersol, SongIndex);
     }
+    // ストップボタン（曲再生中）
     else if (num == 6) {
       dbgPutStr("stop\n");
       stop();
     }
+    // 戻るボタンの定義
     else if (num == 4) {
-      // 画面に応じて「戻る」先を個別に指定
       if (currentScreen == 1) {
         currentScreen = 0; 
       } else if (currentScreen == 2) {
@@ -180,183 +186,240 @@ public void shellMain() {
       } else if (currentScreen == 4) {
         currentScreen = 1;
       } else if (currentScreen == 5) {
-        currentScreen = 2;  // （プレイリストなどにも戻らないといけないので要検討）
+        currentScreen = 2;  
       } else if (currentScreen == 6) {
-        currentScreen = 0;
+        currentScreen = 3; 
       } else if (currentScreen == 7) {
-        currentScreen = 0;
+        currentScreen = 4;
       } else if (currentScreen == 8) {
         currentScreen = 0;
       } else if (currentScreen == 9) {
-        currentScreen = 8;
+        currentScreen = 0;
       } else if (currentScreen == 10) {
+        currentScreen = 0;
+      } else if (currentScreen == 11) {
+        currentScreen = 10;
+      } else if (currentScreen == 12) {
         currentScreen = 0;
       }
       demoScreen(currentScreen, kersol, SongIndex);
       kersol = 1;
     }
-    else if (num == 3) {
-      // 1. Play songs に関する遷移
-      if (currentScreen == 0 && kersol == 1) {
-        currentScreen = 1;  // 曲再生方式選択画面 に遷移
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 1 && kersol == 1)
-      {
-        currentScreen = 2;  // 曲選択画面 に遷移
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 1 && kersol == 2)
-      {
-        currentScreen = 3;  // 履歴画面 に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 1 && kersol == 3)
-      {
-        currentScreen = 4;  // プレイリスト画面 に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 1 && kersol ==4) {
-        currentScreen = 0;  // 戻る
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
+    //決定ボタンの処理
+// 決定ボタンの処理
+else if (num == 3) {
+/* =========================
+currentScreen == 0 : Menu
+========================= */
+  if (currentScreen == 0) {
+    if (kersol == 1) {                 // Play songs
+      currentScreen = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 2) {            // Edit PlayList
+      currentScreen = 9;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 3) {            // Tag
+      currentScreen = 10;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 4) {            // Format
+      currentScreen = 12;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 5) {            // Help
+      currentScreen = 8;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
 
-      else if (currentScreen == 2) {
-        if (kersol==1){
-          currentScreen = 1;  // 戻る
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-        else {
-          currentScreen = 5;  // 曲再生画面（選択） に遷移
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-      }
+/* =========================================
+currentScreen == 1 : Play-songs サブメニュー
+========================================= */
+  else if (currentScreen == 1) {
+    if (kersol == 1) {                 // Song selection
+      currentScreen = 2;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 2) {            // History
+      currentScreen = 3;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 3) {            // PlayList
+      currentScreen = 4;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 4) {            // Back
+      currentScreen = 0;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
 
-      else if (currentScreen == 3) {
-        if (kersol==1){
-          currentScreen = 1;  // 戻る
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-        else {
-          currentScreen = 5;  // 曲再生画面（履歴） に遷移
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-      }
-      else if (currentScreen == 4) {  
-        if (kersol==1){
-          currentScreen = 1;  // 戻る
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-        else {
-          currentScreen = 5;  // 曲再生画面（プレイリスト） に遷移
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-      }
+/* ==============================
+currentScreen == 2 : Song list
+============================== */
+  else if (currentScreen == 2) {
+    if (kersol == 1) {                 // Back
+      currentScreen = 1;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else {                             // Play selected song
+      currentScreen = 5;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
 
-      // 曲再生中の処理
-      else if (currentScreen == 5 && kersol == 1) {
-        // MP3再生
-        if (PlayStopFlag == 1){
-          play(mp3FilesGetPath(SongIndex));
-          char[] fname = mp3FilesGetName(SongIndex);
-          PlayStopFlag = 0;
-        }
-        else{
-          dbgPutStr("stop\n");
-          stop();
-          PlayStopFlag = 1;
-        }
-      }
-      else if (currentScreen == 5 && kersol == 2 && mp3FilesGetName(SongIndex+1)!=null) {
+/* =============================
+currentScreen == 3 : History
+============================= */
+  else if (currentScreen == 3) {
+    if (kersol == 1) {                 // Back
+      currentScreen = 1;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else {                             // Play from history
+      currentScreen = 6;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* ==============================
+currentScreen == 4 : PlayList
+============================== */
+  else if (currentScreen == 4) {
+    if (kersol == 1) {                 // Back
+      currentScreen = 1;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else {                             // Play from playlist
+      currentScreen = 7;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* =====================================
+currentScreen == 5 : Playing a track
+===================================== */
+  else if (currentScreen == 5 || currentScreen == 6 || currentScreen == 7) {
+    if (kersol == 1) {                 // Play / Stop
+      if (PlayStopFlag == 1) {
+        play(mp3FilesGetPath(SongIndex));
+        char[] fname = mp3FilesGetName(SongIndex);
+        PlayStopFlag = 0;
+      } else {
+        dbgPutStr("stop\n");
         stop();
-        SongIndex = SongIndex + 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 5 && kersol == 3 && SongIndex > 1) {
-        stop();
-        SongIndex = SongIndex - 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 5 && kersol == 4) { 
-        speedSelect = true;  
-        demoScreen(currentScreen, kersol, SongIndex);  
-      }
-      else if (currentScreen == 5 && kersol == 5) {
-        volSelect = true;  
-        demoScreen(currentScreen, kersol, SongIndex);  
-      }
-      else if (currentScreen == 5 && kersol ==6) {
-        currentScreen = 2;  // 戻る（プレイリストなどにも戻らないといけないので要検討）
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 0 && kersol == 2) {
-        currentScreen = 7;  // プレイリスト編集画面 に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 7 && kersol ==1) {
-        currentScreen = 0;  // 戻る
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 0 && kersol == 3) {
-        currentScreen = 8;  // タグ画面に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 8) {
-        if (kersol==1){
-          currentScreen = 0;  // 戻る
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-        else {
-        currentScreen = 9;  // タグ編集画面に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-        }
-      }
-      else if (currentScreen == 9 && kersol ==1) {
-        currentScreen = 8;  // 戻る
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 0 && kersol == 4) {
-        currentScreen = 10;  // フォーマット画面に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 10) {
-        if(kersol == 1){
-          currentScreen = 0;  // 戻る
-          kersol = 1;
-          demoScreen(currentScreen, kersol, SongIndex);
-        } else if(kersol >= 2 && kersol <= 7){
-          currentFont = kersol -2; // タイトルとBackのやつを引いてfont(0)から〜〜〜
-          demoScreen(currentScreen, kersol, SongIndex);
-        }
-      }
-      else if (currentScreen == 0 && kersol == 5) {
-        currentScreen = 6;  // ヘルプ画面に遷移
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (currentScreen == 6 && kersol ==1) {
-        currentScreen = 0;  // 戻る
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
+        PlayStopFlag = 1;
       }
     }
+    else if (kersol == 2 && mp3FilesGetName(SongIndex + 1) != null) { // Next
+      stop();
+      SongIndex = SongIndex + 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 3 && SongIndex > 1) {   // Previous
+      stop();
+      SongIndex = SongIndex - 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 4) {             // Speed
+      speedSelect = true;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 5) {             // Volume
+      volSelect = true;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 6) {             // Back to song list
+      if (currentScreen == 5) currentScreen = 2;
+      if (currentScreen == 6) currentScreen = 3;
+      if (currentScreen == 7) currentScreen = 4;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* =========================
+currentScreen == 8 : Help
+========================= */
+  else if (currentScreen == 8) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 0;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* =================================
+currentScreen == 9 : Playlist edit
+================================= */
+  else if (currentScreen == 9) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 0;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* ============================
+currentScreen == 10 : Tag menu
+============================ */
+  else if (currentScreen == 10) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 0;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else {                              // Tag edit
+      currentScreen = 11;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* ==============================
+currentScreen == 11 : Tag edit
+============================== */
+  else if (currentScreen == 11) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 10;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+/* ==============================
+currentScreen == 12 : Format
+============================== */
+  else if (currentScreen == 12) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 0;
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol >= 2 && kersol <= 7) { // Font choice
+      currentFont = kersol - 2;         // 0 〜
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+  }
+
+} 
+
+
 
     sleep(10);
   }
