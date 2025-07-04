@@ -64,13 +64,14 @@ int swToNum(int sw) {
 
 //グローバル変数の定義
 int volume = 3; 
-int speed = 3;   
+int speed = 5;   
 int currentFont = 0;
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
 int listOffset4 = 0;  
-
+// 速さ 0.2×, 0.4×, 0.6×, 0.8×, 1.0× 用 CLOCKF テーブル 
+int[] clockTable = { 0x57E4, 0x4E20, 0x445C, 0x3A98, 0x30D4 };
 
 void asta(int y) {
   locateXY(0, y);
@@ -85,6 +86,18 @@ int currentListIndex(int scr, int kersol) {
   else if (scr == 4)  off = listOffset4;
   return off + (kersol - 2) + 1;
 }
+
+//速度調節
+void setClockAndRestart(int idx, int pathIdx) {          // idx:1～5
+  stop();                                                 // 一度停止
+  spiWriteMp3Reg(0x00, 0x0804);
+  sleep(2);
+  spiWriteMp3Reg(0x03, clockTable[idx - 1]);              // CLOCKF
+  spiWriteMp3Reg(0x05, 0x1F40);
+  sleep(2);
+  play(mp3FilesGetPath(pathIdx)); // 曲を先頭から再生
+}
+
 
 
 void demoScreen(int screenId, int kersol, int SongIndex) {
@@ -173,18 +186,25 @@ public void shellMain() {
     }
     // 速度調節
     else if (speedSelect) {
-      if (num == 1 && speed< 5){ // speedup
-        speed= speed+ 1;
-        spiWriteMp3Reg(0x03, (5 - speed) * 0x186A);
+      /* ↑キー：スピードアップ */
+      if (num == 1 && speed < 5) {
+        speed = speed + 1;
+        setClockAndRestart(speed, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
-      } else if (num == 5 && speed> 1) {  // speeddown
-        speed= speed- 1;
-        spiWriteMp3Reg(0x03, (5 - speed) * 0x186A); 
+      }
+      /* ↓キー：スピードダウン */
+      else if (num == 5 && speed > 1) {
+        speed = speed - 1;
+        setClockAndRestart(speed, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
-      } else if (num == 3) {
-      speedSelect = false;
+      }
+
+      /* 決定キー：速度設定終了 */
+      else if (num == 3) {
+        speedSelect = false;
       }
     }
+
 
     //カーソルの上下移動の定義
     else if (num == 1) {
@@ -515,9 +535,6 @@ public void shellMain() {
     }
 
   } 
-
-
-
     sleep(10);
   }
 }
