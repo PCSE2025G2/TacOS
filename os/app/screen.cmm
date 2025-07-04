@@ -1,5 +1,5 @@
 char[][][] screenDat = {
-  // Menu 画面
+  // 0.Menu 画面
   {
     "Menu",
     "Play songs",
@@ -10,7 +10,7 @@ char[][][] screenDat = {
     "1:up 3:decision",
     "4:back 5:down"
   },
-  // Play songs（曲再生方法選択）画面
+  // 1.Play songs（曲再生方法選択）画面
   {
     "Play songs",
     "Song selection",
@@ -21,7 +21,7 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // Song selection（曲選択）画面
+  // 2.Song selection（曲選択）画面
   {
     "Song selection",
     "Back",
@@ -32,7 +32,7 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // History（履歴）画面
+  // 3.History（履歴）画面
   {
     "History",
     "Back",
@@ -43,18 +43,18 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // PlayList（プレイリスト）画面
+  // 4.PlayList（プレイリスト）画面
   {
     "PlayList",
     "Back",
     "",
     "",
     "",
-    "",
+    "", 
     "",
     ""
   },
-  // Play control（曲再生）画面
+  // 5.Play control（曲再生）画面（曲選択）
   {
     "",
     "Play/Stop",
@@ -65,7 +65,30 @@ char[][][] screenDat = {
     "Back",
     ""
   },
-  // Help（ヘルプ）画面
+  // 6.Play control（曲再生）画面（履歴）
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+  // 7.Play control（曲再生）画面（プレイリスト）
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+
+  // 8.Help（ヘルプ）画面
   {
     "Help",
     "Back",
@@ -80,7 +103,7 @@ char[][][] screenDat = {
     ":Format",
     ":Help <-now!"
   },
-  // Edit PlayList（プレイリスト編集）画面
+  // 9.Edit PlayList（プレイリスト編集）画面
   {
     "Edit PlayList",
     " Back",
@@ -91,7 +114,7 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // Tag（タグ）画面
+  // 10.Tag（タグ）画面
   {
     "Tag",
     "Back",
@@ -102,7 +125,7 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // Edit Tag（タグ編集）画面
+  // 11.Edit Tag（タグ編集）画面
   {
     "Edit Tag",
     "Back",
@@ -114,7 +137,7 @@ char[][][] screenDat = {
     ""
 
   },
-  // Format（フォーマット）画面
+  // 12.Format（フォーマット）画面
   {
     "Format",
     "Back",
