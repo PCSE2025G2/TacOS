@@ -66,13 +66,17 @@ int swToNum(int sw) {
 int volume = 3; 
 int speed = 5;   
 int currentFont = 0;
-char[][] tag_list = {"Normal", "Cool", "Cute", "Rock"};
-char[][] currentTag = {"Normal", "Normal", "Normal", "Normal", "Normal", "Normal", "Normal"}; 
+char[][] tag_list = {"Norm", "Cool", "Cute", "Rock"};
+char[][] currentTag = {"Norm", "Norm", "Norm", "Norm", "Norm", "Norm", "Norm"}; 
 int tagTargetSong = 0;
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
 int listOffset4 = 0;  
+int listOffset8 = 0;
+int listOffset9 = 0;
+int listOffset10 = 0;
+
 // 速さ 0.2×, 0.4×, 0.6×, 0.8×, 1.0× 用 CLOCKF テーブル 
 int[] clockTable = { 0x57E4, 0x4E20, 0x445C, 0x3A98, 0x30D4 };
 
@@ -112,7 +116,27 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
   if (screenId == 2)       off = listOffset2;
   else if (screenId == 3)  off = listOffset3;
   else if (screenId == 4)  off = listOffset4;
+  else if (screenId == 9)  off = listOffset9;
+  else if (screenId == 10)  off = listOffset10;
 
+  // 8.ヘルプ画面でのスクロール
+  if (screenId == 8) {
+      locateXY(0, 0);
+      putStr(scr[0], currentFont);
+      locateXY(0, 1);
+      putStr(scr[1], currentFont);
+      asta(1);            
+      for (int row = 2; row < 8; row = row + 1) {
+          int idx = 2 + listOffset8 + (row - 2);
+          char[] line = scr[idx];
+          locateXY(1, row);
+          if (line != null) {
+              putStr(line, currentFont);
+          } 
+      }
+      asta(kersol);
+      return;  
+  }
 
   for (int row = 0; row < 8; row = row + 1) {
     if (row == 0) {
@@ -122,8 +146,8 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
       locateXY(1, row);       // それ以外の行は1マス開けて表示
       putStr(scr[row], currentFont);
     }
-    // 2. 3. 4.曲選択画面でBack以降に曲一覧を表示
-    if ((screenId == 2 || screenId == 3 || screenId == 4) && row >= 2) {
+    // 2. 3. 4.10.曲選択画面でBack以降に曲一覧を表示
+    if ((screenId == 2 || screenId == 3 || screenId == 4 || screenId == 10) && row >= 2) {
         int idx = off + (row - 2) + 1;          // 実際の曲インデックス
         char[] name = mp3FilesGetName(idx);
         if (name != null) {
@@ -131,6 +155,16 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
             putStr(name, currentFont);
         }
     }
+    // 9.プレイリスト編集画面でregister以降に曲一覧を表示
+    else if (screenId == 9 && row >= 3) {
+        int idx = off + (row - 2) + 1;
+        char[] name = mp3FilesGetName(idx);  
+        if (name != null) {
+            locateXY(2, row);
+            putStr(name, currentFont);
+        }
+    }
+
     // 5. 6. 7.曲再生画面で速度と音量を表示
     if ((screenId == 5 && row == 5) || (screenId == 6 && row == 5) || (screenId == 7 && row == 5)) {  
       locateXY(8, 4);                  
@@ -138,14 +172,9 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
       locateXY(8, 5);                  
       putDec(volume, 1, currentFont);                                  
     }
-    // Tag画面で曲名を一覧表示
-    if (screenId == 10 && row >= 2 && mp3FilesGetName(row - 1) != null) {
-      locateXY(1, row);
-      putStr(mp3FilesGetName(row - 1), currentFont);
-    }
     // 曲再生画面とTag編集画面の右上にTag名を表示
-    if ((screenId == 5 || screenId == 11) && row == 0) {
-      locateXY(10, 0);
+    if ((screenId == 5 || screenId == 6 || screenId == 7 || screenId == 11) && row == 0) {
+      locateXY(12, 0);
       putStr(currentTag[SongIndex], currentFont);
     }
   }
@@ -233,6 +262,18 @@ public void shellMain() {
             listOffset4 = listOffset4 - 1;
             demoScreen(currentScreen, kersol, SongIndex);
         }
+        else if (kersol == 2 && currentScreen == 8 && listOffset8 > 0) {
+            listOffset8 = listOffset8 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 9 && listOffset9 > 0) {
+            listOffset9 = listOffset9 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 10 && listOffset10 > 0) {
+            listOffset10 = listOffset10 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
         else if (kersol > 1) {          // 通常の 1 行上移動
             kersol = kersol - 1;
             demoScreen(currentScreen, kersol, SongIndex);
@@ -263,6 +304,25 @@ public void shellMain() {
           kersol = 2;
           demoScreen(currentScreen, kersol, SongIndex);
       }
+      else if (kersol == 7 && currentScreen == 8 &&
+          screen(chr(8))[listOffset8 + 6 + 2][0] == '\0') {
+          listOffset8 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 9 &&
+          mp3FilesGetName(listOffset9 + 6 + 1) == null) {
+          listOffset9 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 10 &&
+              mp3FilesGetName(listOffset10 + 6 + 1) == null) {
+          listOffset10 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+
 
       /* ---- スクロール ---- */
       else if (kersol == 7 && currentScreen == 2 &&
@@ -280,10 +340,37 @@ public void shellMain() {
           listOffset4 = listOffset4 + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
+      else if (kersol == 7 && currentScreen == 8 &&
+          screen(chr(8))[listOffset8 + 6 + 2][0] != '\0') {
+          listOffset8 = listOffset8 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 9 &&
+              mp3FilesGetName(listOffset9 + 6 + 1) != null) {
+          listOffset9 = listOffset9 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 10 &&
+              mp3FilesGetName(listOffset10 + 6 + 1) != null) {
+          listOffset10 = listOffset10 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
 
       /* ---- 1 行下移動 ---- */
-      else if ( (kersol < 7 && currentScreen > 0) ||
-                (kersol < 5 && currentScreen == 0) ) {
+      else if ( (kersol < 5 && currentScreen == 0) ||
+                (kersol < 4 && currentScreen == 1) ||
+                (kersol < 7 && currentScreen == 2) ||
+                (kersol < 7 && currentScreen == 3) ||
+                (kersol < 7 && currentScreen == 4) ||
+                (kersol < 6 && currentScreen == 5) ||
+                (kersol < 6 && currentScreen == 6) ||
+                (kersol < 6 && currentScreen == 7) ||
+                (kersol < 7 && currentScreen == 8) ||
+                (kersol < 7 && currentScreen == 9) ||
+                (kersol < 7 && currentScreen == 10) ||
+                (kersol < 5 && currentScreen == 11) ||
+                (kersol < 5 && currentScreen == 12) 
+                ) {
           kersol = kersol + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -319,11 +406,14 @@ public void shellMain() {
       } else if (currentScreen == 7) {
         currentScreen = 4;
       } else if (currentScreen == 8) {
+        listOffset8 = 0;
         currentScreen = 0;
       } else if (currentScreen == 9) {
+        listOffset9 = 0;
         currentScreen = 0;
       } else if (currentScreen == 10) {
         currentScreen = 0;
+        listOffset10 = 0;
       } else if (currentScreen == 11) {
         currentScreen = 10;
       } else if (currentScreen == 12) {
@@ -501,6 +591,14 @@ public void shellMain() {
       if (kersol == 1) {                  // Back
         currentScreen = 0;
         kersol = 1;
+        listOffset9 = 0;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 2){
+        //プレイリスト編集を保存する処理書く（次回）
+        currentScreen = 0;
+        kersol = 1;
+        listOffset9 = 0;
         demoScreen(currentScreen, kersol, SongIndex);
       }
     }
@@ -515,8 +613,8 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else {                              // Tag edit
-        tagTargetSong = kersol - 1;
-        SongIndex = kersol - 1;
+        tagTargetSong = listOffset10 + (kersol - 2) + 1;
+        SongIndex = tagTargetSong;
         currentScreen = 11;    
         kersol = 1;
         demoScreen(currentScreen, kersol, SongIndex);

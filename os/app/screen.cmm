@@ -13,7 +13,7 @@ char[][][] screenDat = {
   // 1.Play songs（曲再生方法選択）画面
   {
     "Play songs",
-    "Song selection",
+    "Song select",
     "History",
     "PlayList",
     "Back",
@@ -21,9 +21,9 @@ char[][][] screenDat = {
     "",
     ""
   },
-  // 2.Song selection（曲選択）画面
+  // 2.Song select（曲選択）画面
   {
-    "Song selection",
+    "Song selec",
     "Back",
     "",
     "",
@@ -94,20 +94,24 @@ char[][][] screenDat = {
     "Back",
     "Menu",
     ":Play songs",
-    " :Song selection",
+    " :Song select",
+    "  :Play control",
     " :History",
+    "  :Play control",
     " :PlayList",
     "  :Play control",
     ":Edit PlayList",
     ":Tag",
+    " :Edit Tag",
     ":Format",
-    ":Help <-now!"
+    ":Help <- now!",
+    ""
   },
   // 9.Edit PlayList（プレイリスト編集）画面
   {
     "Edit PlayList",
-    " Back",
-    " Register",
+    "Back",
+    "Register",
     "",
     "",
     "",
@@ -129,7 +133,7 @@ char[][][] screenDat = {
   {
     "Edit Tag",
     "Back",
-    "Nomal",
+    "Norm",
     "Cool",
     "Cute",
     "Rock",
