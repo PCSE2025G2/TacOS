@@ -5,4 +5,4 @@
  *
  */
 
-public void tagMain();  
+public void tagMain(int tagTaggetSong, int tagId, char[][] tag_list, char[][] currentTag);  

@@ -2,9 +2,11 @@
  * playlist.cmm : 字形をビットマップで返す
 
  */
-public void tagMain(){
-    ;
-}
+public void tagMain(int tagTargetSong, int tagId, char[][] tag_list, char[][] currentTag) {
+  currentTag[tagTargetSong] = tag_list[tagId];
+  }
+  
+
 void savetag(char[] tag){
     ;
 }
