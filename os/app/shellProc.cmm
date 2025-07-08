@@ -67,7 +67,7 @@ int volume = 3;
 int speed = 5;   
 int currentFont = 0;
 char[][] tag_list = {"Norm", "Cool", "Cute", "Rock"};
-char[][] currentTag = {"Norm", "Norm", "Norm", "Norm", "Norm", "Norm", "Norm"}; 
+char[][] currentTag = null;
 int tagTargetSong = 0;
 //曲選択画面
 int listOffset2 = 0;   
@@ -123,7 +123,7 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
   if (screenId == 8) {
       locateXY(0, 0);
       putStr(scr[0], currentFont);
-      locateXY(0, 1);
+      locateXY(1, 1);
       putStr(scr[1], currentFont);
       asta(1);            
       for (int row = 2; row < 8; row = row + 1) {
@@ -203,6 +203,9 @@ public void shellMain() {
   spiResetLcd();      // sleepを使用するので
   spiResetMp3();      // プロセスが実行する
   mp3FilesInit();     // ファイル一覧を作る
+
+  currentTag = tagsLoadFromTxt("/taglist.txt");
+
   demoScreen(currentScreen, kersol, SongIndex);
 
   for (;;) {
@@ -538,6 +541,7 @@ public void shellMain() {
       if (kersol == 1) {                 // Play / Stop
         if (PlayStopFlag == 1) {
           play(mp3FilesGetPath(SongIndex));
+          
           char[] fname = mp3FilesGetName(SongIndex);
           PlayStopFlag = 0;
         } else {
@@ -572,6 +576,10 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
     }
+  /* =========================
+  currentScreen == 6 : HISTORY 
+  ========================= */
+  
 
   /* =========================
   currentScreen == 8 : Help
@@ -632,6 +640,8 @@ public void shellMain() {
       }
       else if (kersol >= 2 && kersol <= 5) {  // Rockまで、kersolは5まで
         tagMain(tagTargetSong, kersol - 2, tag_list, currentTag);
+        tagsSaveToTxt("/taglist.txt");
+        currentTag = tagsLoadFromTxt("/taglist.txt");
         currentScreen = 10;
         kersol = 1;
         demoScreen(currentScreen, kersol, SongIndex);   
