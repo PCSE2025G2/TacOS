@@ -54,3 +54,91 @@ public char[] mp3FilesGetPath(int n) {
   }
   return null;
 }
+
+
+#define MAX_TAGS   12
+#define TAG_LEN    16
+#define TAG_LEN_PLUS2 18
+
+char[][] tags = array(MAX_TAGS, TAG_LEN);
+char[] buf = array(TAG_LEN_PLUS2);
+int numTag = 0;
+
+
+// “Norm, ×12 を tags 配列にセットする
+void tagsSetDefault()
+{
+  for (int i = 0; i < 12; i= i+1) {
+    strCpy(tags[i], "Norm,");   // 末尾の ‘,’ もそのまま保存
+  }
+  numTag = 12;
+}
+
+
+/* -------------------------------------------------- */
+/* タグをテキストファイルに保存
+/* -------------------------------------------------- */
+public void tagsSaveToTxt(char[] listFile)
+{
+  int fd = open(listFile, WRITE_MODE);  
+  if (fd < 0) {                        
+    fd = creat(listFile);                            
+  }
+  seek(fd, 0, 0);     
+  int i, len;
+  for (i = 0; i < numTag; i=i+1) {
+    len = strLen(tags[i]);            
+    strCpy(buf, tags[i]);
+    buf[len]     = '\r';
+    buf[len + 1] = '\n';
+    write(fd, buf, len + 2);
+  }
+  close(fd);
+}
+
+
+/* -------------------------------------------------- */
+/* タグをテキストファイルから読み出し（ファイルが無ければ “Norm,”×12 を生成して保存）    
+/* -------------------------------------------------- */
+public char[][] tagsLoadFromTxt(char[] listFile)
+{
+  /* ---------- ファイルを開く ---------- */
+  int fd = open(listFile, READ_MODE);
+  if (fd < 0) {                       // 無ければ生成 
+    tagsSetDefault();
+    tagsSaveToTxt(listFile);
+    return tags;
+  }
+
+  int  i  = 0;                        // 行インデックス        
+  int  j  = 0;                        // 列インデックス        
+  char   ch;                          // 読み取った文字        
+
+  for ( ; i < MAX_TAGS && read(fd, buf, 1) == 1 ; ) {
+    ch = buf[0];                      // 取り出した 1 文字     
+    if (ch == '\r') {                 
+      continue;
+    }
+    if (ch == '\n') {                 // 行終端 → 次のタグへ   
+      tags[i][j] = '\0';              // NUL 終端              
+      i = i + 1;                      // 行のインクリメント            
+      j = 0;                          // 列をリセット       
+      continue;
+    }
+    if (j < TAG_LEN - 1) {            // 行バッファに空きあり  
+      tags[i][j] = ch;                // 文字をコピー      
+      j = j + 1;
+    }
+  }
+
+  // ファイル末尾が改行で終わらない場合の対応
+  if (j > 0 && i < MAX_TAGS) {
+    tags[i][j] = '\0';
+    i = i + 1;
+  }
+  close(fd);
+  numTag = i;                        
+  return tags;      // tagsを返す 
+}
+
+

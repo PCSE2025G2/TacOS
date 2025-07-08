@@ -101,7 +101,7 @@ public void fsMain() {
   while (true) {                                      // FS のメインループ
     Link l = receive(fsLink);                         // システムコール受付
     int r=fatFsSysCall(l.op, l.prm1, l.prm2, l.prm3,  // システムコール実行
-                       l.client);
+                      l.client);
     send(fsLink ,r);                                  // 結果を返す
   }
 }
