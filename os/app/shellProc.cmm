@@ -63,12 +63,15 @@ int swToNum(int sw) {
 
 
 //グローバル変数の定義
+#define MAX_HISTORY 12
 int volume = 3; 
 int speed = 5;   
 int currentFont = 0;
 char[][] tag_list = {"Norm", "Cool", "Cute", "Rock"};
 char[][] currentTag = null;
 int tagTargetSong = 0;
+int[] history_list = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int historyCount = 0;
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
@@ -105,7 +108,16 @@ void setClockAndRestart(int idx, int pathIdx) {          // idx:1～5
   play(mp3FilesGetPath(pathIdx)); // 曲を先頭から再生
 }
 
-
+//履歴操作
+void addHistory(int songIndex) {
+  for (int i = MAX_HISTORY - 1; i > 0; i=i-1) {             // 履歴を後ろにずらす
+    history_list[i] = history_list[i - 1];
+  }
+  history_list[0] = songIndex;                              // 新しい曲を先頭に追加
+  if (historyCount < MAX_HISTORY) {
+    historyCount = historyCount + 1;
+  }
+}
 
 void demoScreen(int screenId, int kersol, int SongIndex) {
   cls(currentFont);   // LCDをクリアする
@@ -146,8 +158,19 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
       locateXY(1, row);       // それ以外の行は1マス開けて表示
       putStr(scr[row], currentFont);
     }
-    // 2. 3. 4.10.曲選択画面でBack以降に曲一覧を表示
-    if ((screenId == 2 || screenId == 3 || screenId == 4 || screenId == 10) && row >= 2) {
+    // 3.曲選択画面でBack以降に履歴の曲一覧を表示
+    if (screenId == 3 && row >= 2) {
+        int idx = off + (row - 2);
+        if (idx < historyCount) {
+          int songIdx = history_list[idx];
+          locateXY(1, row);
+          putDec(idx + 1, 1, currentFont);
+          putStr(".", currentFont);
+          putStr(mp3FilesGetName(songIdx), currentFont);
+        }
+    }  
+    // 2.4.10.曲選択画面でBack以降に曲一覧を表示
+    if ((screenId == 2 || screenId == 4 || screenId == 10) && row >= 2) {
         int idx = off + (row - 2) + 1;          // 実際の曲インデックス
         char[] name = mp3FilesGetName(idx);
         if (name != null) {
@@ -510,7 +533,11 @@ public void shellMain() {
         kersol = 1;
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else {                             // Play from history
+      else {                             
+        int idx = listOffset3 + (kersol - 2);  
+        if (idx >= 0 && idx < historyCount) {
+          SongIndex = history_list[idx];      
+        }
         currentScreen = 6;
         kersol = 1;
         demoScreen(currentScreen, kersol, SongIndex);
@@ -540,9 +567,16 @@ public void shellMain() {
     else if (currentScreen == 5 || currentScreen == 6 || currentScreen == 7) {
       if (kersol == 1) {                 // Play / Stop
         if (PlayStopFlag == 1) {
-          play(mp3FilesGetPath(SongIndex));
-          
-          char[] fname = mp3FilesGetName(SongIndex);
+          if (currentScreen == 5) {
+            play(mp3FilesGetPath(SongIndex));
+            addHistory(SongIndex);
+          } else if (currentScreen == 6) {
+            play(mp3FilesGetPath(SongIndex));
+            addHistory(SongIndex);
+          } else if (currentScreen == 7) {
+            play(mp3FilesGetPath(SongIndex));
+            addHistory(SongIndex); 
+          }
           PlayStopFlag = 0;
         } else {
           dbgPutStr("stop\n");
@@ -550,6 +584,26 @@ public void shellMain() {
           PlayStopFlag = 1;
         }
       }
+      // 履歴再生画面の場合
+      else if (kersol == 2 && currentScreen == 6) {  // Next
+        int i = 0;
+        while (history_list[i] != -1 && history_list[i] != SongIndex) i=i+1;
+        if (history_list[i + 1] != -1) {
+          stop();
+          SongIndex = history_list[i + 1];
+          demoScreen(currentScreen, kersol, SongIndex);
+        }
+      }
+      else if (kersol == 3 && currentScreen == 6) {  // Previous
+        int i = 0;
+        while (history_list[i] != -1 && history_list[i] != SongIndex) i=i+1;
+        if (i > 0) {
+          stop();
+          SongIndex = history_list[i - 1];
+          demoScreen(currentScreen, kersol, SongIndex);
+        }
+      }
+      // 通常の曲再生画面の場合
       else if (kersol == 2 && mp3FilesGetName(SongIndex + 1) != null) { // Next
         stop();
         SongIndex = SongIndex + 1;
