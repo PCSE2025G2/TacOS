@@ -319,7 +319,7 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 3 &&
-          mp3FilesGetName(listOffset3 + 6 + 1) == null) {
+              (listOffset3 + 6) >= historyCount - 1) {
           listOffset3 = 0;
           kersol = 2;
           demoScreen(currentScreen, kersol, SongIndex);
@@ -357,7 +357,7 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 3 &&
-          mp3FilesGetName(listOffset3 + 6 + 1) != null) {
++               (listOffset3 + 7) < historyCount) {
           listOffset3 = listOffset3 + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -411,6 +411,7 @@ public void shellMain() {
     else if (num == 6) {
       dbgPutStr("stop\n");
       stop();
+      PlayStopFlag = 1;
     }
     // 戻るボタンの定義
     else if (num == 4) {
@@ -535,12 +536,13 @@ public void shellMain() {
       }
       else {                             
         int idx = listOffset3 + (kersol - 2);  
-        if (idx >= 0 && idx < historyCount) {
+        if (historyCount > 0 &&
+            idx >= 0 && idx < historyCount) {
           SongIndex = history_list[idx];      
+          currentScreen = 6;
+          kersol = 1;
+          demoScreen(currentScreen, kersol, SongIndex);
         }
-        currentScreen = 6;
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
       }
     }
 
@@ -562,7 +564,7 @@ public void shellMain() {
     }
 
   /* =====================================
-  currentScreen == 5 : Playing a track
+  currentScreen == 5, 6, 7 : Playing a track
   ===================================== */
     else if (currentScreen == 5 || currentScreen == 6 || currentScreen == 7) {
       if (kersol == 1) {                 // Play / Stop
@@ -572,7 +574,6 @@ public void shellMain() {
             addHistory(SongIndex);
           } else if (currentScreen == 6) {
             play(mp3FilesGetPath(SongIndex));
-            addHistory(SongIndex);
           } else if (currentScreen == 7) {
             play(mp3FilesGetPath(SongIndex));
             addHistory(SongIndex); 
@@ -587,18 +588,20 @@ public void shellMain() {
       // 履歴再生画面の場合
       else if (kersol == 2 && currentScreen == 6) {  // Next
         int i = 0;
-        while (history_list[i] != -1 && history_list[i] != SongIndex) i=i+1;
-        if (history_list[i + 1] != -1) {
+        while (i < historyCount && history_list[i] != SongIndex) i=i+1;
+        if (i + 1 < historyCount) {
           stop();
+          PlayStopFlag = 1;
           SongIndex = history_list[i + 1];
           demoScreen(currentScreen, kersol, SongIndex);
         }
       }
       else if (kersol == 3 && currentScreen == 6) {  // Previous
         int i = 0;
-        while (history_list[i] != -1 && history_list[i] != SongIndex) i=i+1;
+        while (i < historyCount && history_list[i] != SongIndex) i=i+1;
         if (i > 0) {
           stop();
+          PlayStopFlag = 1;
           SongIndex = history_list[i - 1];
           demoScreen(currentScreen, kersol, SongIndex);
         }
@@ -606,11 +609,13 @@ public void shellMain() {
       // 通常の曲再生画面の場合
       else if (kersol == 2 && mp3FilesGetName(SongIndex + 1) != null) { // Next
         stop();
+        PlayStopFlag = 1;
         SongIndex = SongIndex + 1;
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 3 && SongIndex > 1) {   // Previous
         stop();
+        PlayStopFlag = 1;
         SongIndex = SongIndex - 1;
         demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -630,10 +635,7 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
     }
-  /* =========================
-  currentScreen == 6 : HISTORY 
-  ========================= */
-  
+
 
   /* =========================
   currentScreen == 8 : Help
