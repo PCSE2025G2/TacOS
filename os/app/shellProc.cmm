@@ -14,6 +14,8 @@
 #include "format.hmm"
 #include "playlist.hmm"
 #include "tag.hmm"
+#include <fs.hmm>
+#include "appUtil.hmm"
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -64,6 +66,7 @@ int swToNum(int sw) {
 
 //グローバル変数の定義
 #define MAX_HISTORY 12
+#define MAX_PLAYLIST 12
 int volume = 3; 
 int speed = 5;   
 int currentFont = 0;
@@ -72,6 +75,8 @@ char[][] currentTag = null;
 int tagTargetSong = 0;
 int[] history_list = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int historyCount = 0;
+int playlistCount = 0;
+int[] playlist_list = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
@@ -119,6 +124,129 @@ void addHistory(int songIndex) {
   }
 }
 
+//プレイリスト操作
+#define PL_FILE "/playlist.txt"
+
+#define PL_NAME_LEN    13          
+#define PL_BUF_LEN     16         
+
+char[][] playlistNames = array(MAX_PLAYLIST, PL_NAME_LEN);
+
+/* --- ファイル名 → 曲インデックス (1-based)。無ければ -1 --- */
+int mp3FilesFindIndex(char[] name)
+{
+    int idx = 1;
+    char[] n;
+    while ((n = mp3FilesGetName(idx)) != null) {
+        if (strCmp(n, name) == 0) return idx;  
+        idx = idx + 1;
+    }
+    return -1;                            
+}
+
+
+/*--------------------------------------------------------------*/
+/* プレイリストを保存 （1 行 1 ファイル名, "\r\n" 区切り）      */
+/*--------------------------------------------------------------*/
+char[] buf = array(PL_BUF_LEN);
+void playlistSaveToTxt(char[] listFile)
+{
+    int fd = open(listFile, WRITE_MODE);
+    if (fd < 0) fd = creat(listFile);          /* 無ければ作成 */
+    seek(fd, 0, 0);                            /* 先頭へ */
+    int len;
+    for (int i = 0; i < playlistCount; i = i + 1) {
+        /* 行バッファ buf に "songname\r\n" を作る */
+        char[] song = playlistNames[i];
+        len = strLen(song);
+        strCpy(buf, song);
+        buf[len]     = '\r';
+        buf[len + 1] = '\n';
+        write(fd, buf, len + 2);
+    }
+    close(fd);
+}
+
+/*--------------------------------------------------------------*/
+/* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
+/*   読み込んだファイル名を playlistNames[] に保存し，           */
+/*   同時に曲インデックスを playlist_list[] に変換               */
+/*--------------------------------------------------------------*/
+
+void playlistLoadFromTxt(char[] listFile)
+{
+    int fd = open(listFile, READ_MODE);
+    if (fd < 0) {                              /* ファイル無 → 空作成 */
+        fd = creat(listFile);
+        close(fd);
+        playlistCount = 0;
+        return;
+    }
+    int  i = 0, j = 0;
+    char ch;
+
+    for ( ; i < MAX_PLAYLIST && read(fd, buf, 1) == 1 ; ) {
+        ch = buf[0];
+
+        if (ch == '\r') continue;              /* CR は無視 */
+
+        if (ch == '\n') {                      /* 行終端 */
+            playlistNames[i][j] = '\0';
+            playlist_list[i]   = mp3FilesFindIndex(playlistNames[i]);
+            if (playlist_list[i] != -1) i = i + 1;   /* 有効行だけ採用 */
+            j = 0;                             /* 列リセット */
+            continue;
+        }
+
+        if (j < PL_NAME_LEN - 1) {             /* 行バッファに空き有 */
+            playlistNames[i][j] = ch;
+            j = j + 1;
+        }
+    }
+    /* ファイル末尾が改行無しで終わった場合の処理 */
+    if (j > 0 && i < MAX_PLAYLIST) {
+        playlistNames[i][j] = '\0';
+        playlist_list[i]   = mp3FilesFindIndex(playlistNames[i]);
+        if (playlist_list[i] != -1) i = i + 1;
+    }
+    close(fd);
+    playlistCount = i;
+}
+void addPlayList(int songIdx)
+{
+    if (playlistCount >= MAX_PLAYLIST) return;
+
+    /* すでにあるかチェック（曲名で判定） */
+    for (int i = 0; i < playlistCount; i = i + 1)
+        if (playlist_list[i] == songIdx) return;
+
+    playlist_list[playlistCount] = songIdx;
+    strCpy(playlistNames[playlistCount], mp3FilesGetName(songIdx));
+    playlistCount = playlistCount + 1;
+}
+
+/* --- playlist から 1 曲削除 ------------------------------------ */
+void removePlayList(int songIdx)
+{
+    int i = 0;
+    /* 曲が見つかる位置を探す */
+    while (i < playlistCount && playlist_list[i] != songIdx) i=i+1;
+
+    if (i == playlistCount) return;          /* 無かったら何もしない */
+
+    /* 後ろを 1 つ前へ詰める */
+    for ( ; i < playlistCount-1; i = i + 1) {
+        playlist_list[i] = playlist_list[i+1];
+        strCpy(playlistNames[i], playlistNames[i+1]);
+    }
+    playlistCount = playlistCount - 1;
+}
+
+
+
+
+
+
 void demoScreen(int screenId, int kersol, int SongIndex) {
   cls(currentFont);   // LCDをクリアする
   char[][] scr = screen(chr(screenId));
@@ -136,8 +264,7 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
       locateXY(0, 0);
       putStr(scr[0], currentFont);
       locateXY(1, 1);
-      putStr(scr[1], currentFont);
-      asta(1);            
+      putStr(scr[1], currentFont);          
       for (int row = 2; row < 8; row = row + 1) {
           int idx = 2 + listOffset8 + (row - 2);
           char[] line = scr[idx];
@@ -169,8 +296,8 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
           putStr(mp3FilesGetName(songIdx), currentFont);
         }
     }  
-    // 2.4.10.曲選択画面でBack以降に曲一覧を表示
-    if ((screenId == 2 || screenId == 4 || screenId == 10) && row >= 2) {
+    // 2.10.曲選択画面でBack以降に曲一覧を表示
+    if ((screenId == 2  || screenId == 10) && row >= 2) {
         int idx = off + (row - 2) + 1;          // 実際の曲インデックス
         char[] name = mp3FilesGetName(idx);
         if (name != null) {
@@ -178,13 +305,35 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
             putStr(name, currentFont);
         }
     }
+    //4.プレイリストに保存した曲を表示
+    else if (screenId == 4 && row >= 2) {
+        int idx = off + (row - 2);
+        if (idx < playlistCount) {
+            int songIdx = playlist_list[idx];
+            locateXY(1, row);
+            putDec(idx + 1, 1, currentFont);
+            putStr(".", currentFont);
+            putStr(mp3FilesGetName(songIdx), currentFont);
+        }
+    }
     // 9.プレイリスト編集画面でregister以降に曲一覧を表示
     else if (screenId == 9 && row >= 3) {
         int idx = off + (row - 2) + 1;
         char[] name = mp3FilesGetName(idx);  
         if (name != null) {
-            locateXY(2, row);
-            putStr(name, currentFont);
+        boolean inPL = false;
+        for (int i = 0; i < playlistCount; i=i+1)
+            if (playlist_list[i] == idx) { inPL = true; break; }
+
+        locateXY(1, row);  
+        if (inPL){
+          putCh('+', currentFont);
+        }                
+        else{
+          putCh('-', currentFont);
+        }
+        putStr(" ", currentFont);
+        putStr(name, currentFont);
         }
     }
 
@@ -226,6 +375,7 @@ public void shellMain() {
   spiResetLcd();      // sleepを使用するので
   spiResetMp3();      // プロセスが実行する
   mp3FilesInit();     // ファイル一覧を作る
+  playlistLoadFromTxt(PL_FILE);
 
   currentTag = tagsLoadFromTxt("/taglist.txt");
 
@@ -292,7 +442,7 @@ public void shellMain() {
             listOffset8 = listOffset8 - 1;
             demoScreen(currentScreen, kersol, SongIndex);
         }
-        else if (kersol == 2 && currentScreen == 9 && listOffset9 > 0) {
+        else if (kersol == 3 && currentScreen == 9 && listOffset9 > 0) {
             listOffset9 = listOffset9 - 1;
             demoScreen(currentScreen, kersol, SongIndex);
         }
@@ -304,11 +454,14 @@ public void shellMain() {
             kersol = kersol - 1;
             demoScreen(currentScreen, kersol, SongIndex);
         }
-        if ((currentScreen == 2 || currentScreen == 3 || currentScreen == 4) &&
-            kersol >= 2) {
+        if (currentScreen == 4 && kersol >= 2) {
+            SongIndex = playlist_list[listOffset4 + (kersol - 2)];
+        } 
+        else if ((currentScreen == 2 || currentScreen == 3) && kersol >= 2) {
             SongIndex = currentListIndex(currentScreen, kersol);
         }
-    }
+      }
+    
 
     else if (num == 5) {
       /* ---- 一番下の場合，最初へジャンプ ---- */
@@ -557,9 +710,13 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else {                             // Play from playlist
-        currentScreen = 7;
-        kersol = 1;
-        demoScreen(currentScreen, kersol, SongIndex);
+        int idx = listOffset4 + (kersol - 2);
+        if (idx >= 0 && idx < playlistCount) {
+            SongIndex = playlist_list[idx];
+            currentScreen = 7;          /* 再生用画面 */
+            kersol = 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
       }
     }
 
@@ -606,14 +763,33 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
         }
       }
+      // Playlist 再生画面の Next / Prev 
+      else if (kersol == 2 && currentScreen == 7) {        /* Next */
+            int i = 0;
+            while (i < playlistCount && playlist_list[i] != SongIndex) i = i + 1;
+            if (i + 1 < playlistCount) {
+                stop();  PlayStopFlag = 1;
+                SongIndex = playlist_list[i + 1];
+                demoScreen(currentScreen, kersol, SongIndex);
+            }
+        }
+      else if (kersol == 3 && currentScreen == 7) {        /* Previous */
+            int i = 0;
+            while (i < playlistCount && playlist_list[i] != SongIndex) i = i + 1;
+            if (i > 0) {
+                stop();  PlayStopFlag = 1;
+                SongIndex = playlist_list[i - 1];
+                demoScreen(currentScreen, kersol, SongIndex);
+            }
+      }
       // 通常の曲再生画面の場合
-      else if (kersol == 2 && mp3FilesGetName(SongIndex + 1) != null) { // Next
+      else if (kersol == 2 && currentScreen == 5 && (mp3FilesGetName(SongIndex + 1) != null)) { // Next
         stop();
         PlayStopFlag = 1;
         SongIndex = SongIndex + 1;
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else if (kersol == 3 && SongIndex > 1) {   // Previous
+      else if (kersol == 3 && currentScreen == 5 && SongIndex > 1) {   // Previous
         stop();
         PlayStopFlag = 1;
         SongIndex = SongIndex - 1;
@@ -656,14 +832,31 @@ public void shellMain() {
         currentScreen = 0;
         kersol = 1;
         listOffset9 = 0;
+        playlistLoadFromTxt(PL_FILE);
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else if (kersol == 2){
-        //プレイリスト編集を保存する処理書く（次回）
+      else if (kersol == 2) {            
+        playlistSaveToTxt(PL_FILE);
+        playlistLoadFromTxt(PL_FILE);
         currentScreen = 0;
         kersol = 1;
         listOffset9 = 0;
         demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol >= 3) {                     /* 曲行が選ばれた */
+          int songIdx = listOffset9 + (kersol - 2) + 1;
+          if (mp3FilesGetName(songIdx) != null) {
+              boolean inPL = false;
+              for (int i = 0; i < playlistCount; i = i + 1)
+                  if (playlist_list[i] == songIdx) { inPL = true; break; }
+
+              if (inPL) {
+                  removePlayList(songIdx);        /* ← 削除して「-」に戻す */
+              } else {
+                  addPlayList(songIdx);           /* ← 従来通り追加 */
+              }
+              demoScreen(currentScreen, kersol, SongIndex);   /* 再描画 */
+          }
       }
     }
 
