@@ -1,8 +1,5 @@
 /*
  * playlist.hmm : 液晶ディスプレイのドライバ
- *
- * 2020.08.23 : 新規作成
- *
  */
 
-public void tagMain(int tagTaggetSong, int tagId, char[][] tag_list, char[][] currentTag);  
+public void tagMain(char[][] tag);

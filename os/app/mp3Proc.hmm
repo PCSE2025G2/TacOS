@@ -4,4 +4,7 @@
 
 public boolean play(char[] path);
 public void stop();
+public void speed(int idx, int pathIdx);
+public void volume(int idx);
 public void mp3Main();
+public int jumpMusic(int screen, int songIdx, int dir, int hisC, int[] hisL, int playC, int[] playL);

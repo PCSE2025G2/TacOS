@@ -10,9 +10,9 @@
 #include "spi.hmm"
 #include "Files.hmm"
 #include "shellProc.hmm"
+#include "playlist.hmm"
 #include "screen.hmm"
 #include "format.hmm"
-#include "playlist.hmm"
 #include "tag.hmm"
 #include <fs.hmm>
 #include "appUtil.hmm"
@@ -63,12 +63,11 @@ int swToNum(int sw) {
 // 画面表示
 //-----------------------------------------------------------------------------
 
-
 //グローバル変数の定義
-#define MAX_HISTORY 12
-#define MAX_PLAYLIST 12
-int volume = 3; 
-int speed = 5;   
+#define MAX_HISTORY 15
+#define MAX_PLAYLIST 15
+int volume_num = 3; 
+int speed_num = 5;   
 int currentFont = 0;
 char[][] tag_list = {"Norm", "Cool", "Cute", "Rock"};
 char[][] currentTag = null;
@@ -85,8 +84,7 @@ int listOffset8 = 0;
 int listOffset9 = 0;
 int listOffset10 = 0;
 
-// 速さ 0.2×, 0.4×, 0.6×, 0.8×, 1.0× 用 CLOCKF テーブル 
-int[] clockTable = { 0x57E4, 0x4E20, 0x445C, 0x3A98, 0x30D4 };
+
 
 void asta(int y) {
   locateXY(0, y);
@@ -102,19 +100,10 @@ int currentListIndex(int scr, int kersol) {
   return off + (kersol - 2) + 1;
 }
 
-//速度調節
-void setClockAndRestart(int idx, int pathIdx) {          // idx:1～5
-  stop();                                                 // 一度停止
-  spiWriteMp3Reg(0x00, 0x0804);
-  sleep(2);
-  spiWriteMp3Reg(0x03, clockTable[idx - 1]);              // CLOCKF
-  spiWriteMp3Reg(0x05, 0x1F40);
-  sleep(2);
-  play(mp3FilesGetPath(pathIdx)); // 曲を先頭から再生
-}
-
 //履歴操作
 void addHistory(int songIndex) {
+  if (historyCount > 0 && history_list[0] == songIndex)
+    return;
   for (int i = MAX_HISTORY - 1; i > 0; i=i-1) {             // 履歴を後ろにずらす
     history_list[i] = history_list[i - 1];
   }
@@ -143,39 +132,12 @@ int mp3FilesFindIndex(char[] name)
     return -1;                            
 }
 
-
-/*--------------------------------------------------------------*/
-/* プレイリストを保存 （1 行 1 ファイル名, "\r\n" 区切り）      */
-/*--------------------------------------------------------------*/
-char[] buf = array(PL_BUF_LEN);
-void playlistSaveToTxt(char[] listFile)
-{
-    int fd = open(listFile, WRITE_MODE);   /* 既存ファイルを上書き用に開く */
-    if (fd < 0) {                          /* 無ければ新規作成           */
-        fd = creat(listFile);
-    }
-    if (fd < 0) return;                    
-
-    seek(fd, 0, 0);                       
-
-    int len;
-    for (int i = 0; i < 12; i = i + 1) {
-        char[] song = playlistNames[i];
-        len = strLen(song);
-        strCpy(buf, song);
-        buf[len]     = '\r';
-        buf[len + 1] = '\n';
-        write(fd, buf, len + 2);
-    }
-    close(fd);
-}
-
 /*--------------------------------------------------------------*/
 /* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
 /*   読み込んだファイル名を playlistNames[] に保存し，           */
 /*   同時に曲インデックスを playlist_list[] に変換               */
 /*--------------------------------------------------------------*/
-
+char[] buf = array(PL_BUF_LEN);
 void playlistLoadFromTxt(char[] listFile)
 {
     int fd = open(listFile, READ_MODE);
@@ -276,12 +238,6 @@ void removePlayList(int songIdx)
 }
 
 
-
-
-
-
-
-
 void demoScreen(int screenId, int kersol, int SongIndex) {
   cls(currentFont);   // LCDをクリアする
   char[][] scr = screen(chr(screenId));
@@ -375,9 +331,9 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
     // 5. 6. 7.曲再生画面で速度と音量を表示
     if ((screenId == 5 && row == 5) || (screenId == 6 && row == 5) || (screenId == 7 && row == 5)) {  
       locateXY(8, 4);                  
-      putDec(speed, 1, currentFont); 
+      putDec(speed_num, 1, currentFont); 
       locateXY(8, 5);                  
-      putDec(volume, 1, currentFont);                                  
+      putDec(volume_num, 1, currentFont);                                  
     }
     // 曲再生画面とTag編集画面の右上にTag名を表示
     if ((screenId == 5 || screenId == 6 || screenId == 7 || screenId == 11) && row == 0) {
@@ -423,15 +379,15 @@ public void shellMain() {
 
     // 音量調節
     if (volSelect) {
-      if (num == 1 && volume < 5){ // Volume up
-        volume = volume + 1;
-        
-        spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
+      if (num == 1 && volume_num < 5){ // Volume_num up
+        volume_num = volume_num + 1;
+
+        volume(volume_num);
         demoScreen(currentScreen, kersol, SongIndex);
       } 
-      else if (num == 5 && volume > 1) {  // Volume down
-        volume = volume - 1;
-        spiWriteMp3Reg(0x0b, (5 - volume) * 0x1010);
+      else if (num == 5 && volume_num > 1) {  // Volume_num down
+        volume_num = volume_num - 1;
+        volume(volume_num);
         demoScreen(currentScreen, kersol, SongIndex);
       } 
       else if (num == 3) {
@@ -441,15 +397,15 @@ public void shellMain() {
     // 速度調節
     else if (speedSelect) {
       /* ↑キー：スピードアップ */
-      if (num == 1 && speed < 5) {
-        speed = speed + 1;
-        setClockAndRestart(speed, SongIndex);
+      if (num == 1 && speed_num < 5) {
+        speed_num = speed_num + 1;
+        speed(speed_num, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
       }
       /* ↓キー：スピードダウン */
-      else if (num == 5 && speed > 1) {
-        speed = speed - 1;
-        setClockAndRestart(speed, SongIndex);
+      else if (num == 5 && speed_num > 1) {
+        speed_num = speed_num - 1;
+        speed(speed_num, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
       }
 
@@ -546,7 +502,7 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 3 &&
-+               (listOffset3 + 7) < historyCount) {
+              (listOffset3 + 7) < historyCount) {
           listOffset3 = listOffset3 + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -635,8 +591,8 @@ public void shellMain() {
       } else if (currentScreen == 12) {
         currentScreen = 0;
       }
-      demoScreen(currentScreen, kersol, SongIndex);
       kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
     }
 
   // 決定ボタンの処理
@@ -777,64 +733,37 @@ public void shellMain() {
           PlayStopFlag = 1;
         }
       }
-      // 履歴再生画面の場合
-      else if (kersol == 2 && currentScreen == 6) {  // Next
-        int i = 0;
-        while (i < historyCount && history_list[i] != SongIndex) i=i+1;
-        if (i + 1 < historyCount) {
-          stop();
-          PlayStopFlag = 1;
-          SongIndex = history_list[i + 1];
-          demoScreen(currentScreen, kersol, SongIndex);
+
+      /* Next / Previous の判定 */
+      else if (kersol == 2 || kersol == 3) {        /* 2:Next, 3:Prev */
+        int dir = 0;
+        if (kersol == 2)
+        {
+          dir = 1;
         }
-      }
-      else if (kersol == 3 && currentScreen == 6) {  // Previous
-        int i = 0;
-        while (i < historyCount && history_list[i] != SongIndex) i=i+1;
-        if (i > 0) {
-          stop();
-          PlayStopFlag = 1;
-          SongIndex = history_list[i - 1];
-          demoScreen(currentScreen, kersol, SongIndex);
+        else{
+            dir = -1;
         }
+          int nextIdx = jumpMusic(
+                            currentScreen,       
+                            SongIndex,          
+                            dir,              
+                            historyCount, history_list,
+                            playlistCount, playlist_list);
+
+          if (nextIdx != SongIndex) {            
+              stop();                           
+              PlayStopFlag = 1;
+              SongIndex = nextIdx;               
+              demoScreen(currentScreen, kersol, SongIndex);
+          }
       }
-      // Playlist 再生画面の Next / Prev 
-      else if (kersol == 2 && currentScreen == 7) {        // Next 
-            int i = 0;
-            while (i < playlistCount && playlist_list[i] != SongIndex) i = i + 1;
-            if (i + 1 < playlistCount) {
-                stop();  PlayStopFlag = 1;
-                SongIndex = playlist_list[i + 1];
-                demoScreen(currentScreen, kersol, SongIndex);
-            }
-        }
-      else if (kersol == 3 && currentScreen == 7) {        // Previous 
-            int i = 0;
-            while (i < playlistCount && playlist_list[i] != SongIndex) i = i + 1;
-            if (i > 0) {
-                stop();  PlayStopFlag = 1;
-                SongIndex = playlist_list[i - 1];
-                demoScreen(currentScreen, kersol, SongIndex);
-            }
-      }
-      // 通常の曲再生画面の場合
-      else if (kersol == 2 && currentScreen == 5 && (mp3FilesGetName(SongIndex + 1) != null)) { // Next
-        stop();
-        PlayStopFlag = 1;
-        SongIndex = SongIndex + 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
-      else if (kersol == 3 && currentScreen == 5 && SongIndex > 1) {   // Previous
-        stop();
-        PlayStopFlag = 1;
-        SongIndex = SongIndex - 1;
-        demoScreen(currentScreen, kersol, SongIndex);
-      }
+
       else if (kersol == 4) {             // Speed
         speedSelect = true;
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else if (kersol == 5) {             // Volume
+      else if (kersol == 5) {             // Volume_num
         volSelect = true;
         demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -871,7 +800,7 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 2) {            
-        playlistSaveToTxt(PL_FILE);
+        playlistMain(playlistNames);
         playlistLoadFromTxt(PL_FILE);
         currentScreen = 0;
         kersol = 1;
@@ -923,8 +852,8 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol >= 2 && kersol <= 5) {  // Rockまで、kersolは5まで
-        tagMain(tagTargetSong, kersol - 2, tag_list, currentTag);
-        tagsSaveToTxt("/taglist.txt");
+        currentTag[tagTargetSong] = tag_list[kersol - 2];
+        tagMain(currentTag);
         currentTag = tagsLoadFromTxt("/taglist.txt");
         currentScreen = 10;
         kersol = 1;

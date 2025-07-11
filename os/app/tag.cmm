@@ -2,11 +2,46 @@
  * playlist.cmm : 字形をビットマップで返す
 
  */
-public void tagMain(int tagTargetSong, int tagId, char[][] tag_list, char[][] currentTag) {
-  currentTag[tagTargetSong] = tag_list[tagId];
+#include <fs.hmm>
+#include "Files.hmm"
+#include <util.hmm>
+
+#define TG_FILE "/taglist.txt"
+
+#define MAX_TAGS   15
+#define TAG_LEN    16
+#define TAG_LEN_PLUS2 18
+
+int numTag = 0; 
+char[] buf = array(TAG_LEN_PLUS2);
+
+/* -------------------------------------------------- */
+/* タグをテキストファイルに保存 */
+/* -------------------------------------------------- */
+void saveTag(char[][] tag)
+{
+  int numTag = 0;
+    while (mp3FilesGetName(numTag + 1) != null && numTag < MAX_TAGS)
+        numTag = numTag + 1;
+  int fd = open(TG_FILE, WRITE_MODE);
+  if (fd < 0) {                        
+    fd = creat(TG_FILE);                            
   }
+  seek(fd, 0, 0);     
+  int i, len;
+  for (i = 0; i < numTag; i=i+1) {
+    len = strLen(tag[i]);            
+    strCpy(buf, tag[i]);
+    buf[len]     = '\r';
+    buf[len + 1] = '\n';
+    write(fd, buf, len + 2);
+  }
+  close(fd);
+}
+
+public void tagMain(char[][] tag) {
+  saveTag(tag);
+}
   
 
-void savetag(char[] tag){
-    ;
-}
+

@@ -5,6 +5,7 @@
 #include <util.hmm>
 #include "appUtil.hmm"
 #include "Files.hmm"
+#include "tag.hmm"
 
 //-----------------------------------------------------------------------------
 // MP3ファイルの一覧（ただし，最大12個）
@@ -65,7 +66,7 @@ char[] buf = array(TAG_LEN_PLUS2);
 int numTag = 0;
 
 
-// “Norm, ×12 を tags 配列にセットする
+// “Norm, ×15 を tags 配列にセットする
 void tagsSetDefault()
 {
   for (int i = 0; i < 12; i= i+1) {
@@ -75,26 +76,7 @@ void tagsSetDefault()
 }
 
 
-/* -------------------------------------------------- */
-/* タグをテキストファイルに保存 */
-/* -------------------------------------------------- */
-public void tagsSaveToTxt(char[] listFile)
-{
-  int fd = open(listFile, WRITE_MODE);  
-  if (fd < 0) {                        
-    fd = creat(listFile);                            
-  }
-  seek(fd, 0, 0);     
-  int i, len;
-  for (i = 0; i < numTag; i=i+1) {
-    len = strLen(tags[i]);            
-    strCpy(buf, tags[i]);
-    buf[len]     = '\r';
-    buf[len + 1] = '\n';
-    write(fd, buf, len + 2);
-  }
-  close(fd);
-}
+
 
 
 /* -------------------------------------------------- */
@@ -106,7 +88,7 @@ public char[][] tagsLoadFromTxt(char[] listFile)
   int fd = open(listFile, READ_MODE);
   if (fd < 0) {                       // 無ければ生成 
     tagsSetDefault();
-    tagsSaveToTxt(listFile);
+    tagMain(tags);
     return tags;
   }
 

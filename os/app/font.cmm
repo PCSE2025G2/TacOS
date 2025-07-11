@@ -200,7 +200,7 @@ char[][] fontBold =
  *   行 r のシフト量 = r / 2 dot
  *   元フォントは 0x20 (‘ ’) ～ 0x7E (‘~’) の 95 文字
  */
-char[][] fontIraric =
+char[][] fontItaric =
     {
         {'\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00'}, // 20( )
         {'\x00', '\x00', '\x03', '\x2f', '\x17', '\x01', '\x00', '\x00'}, // 21(!)
@@ -399,16 +399,16 @@ char[][] fontoutline =
     };
 
 
-public char[] font(char code, int currentFont) {
+public char[] font(char code, int FontIndex) {
   if (ord(code)<=0x20) return fontDat[0];
   if (ord(code)>=0x7f) return fontDat[0];
-  if (currentFont == 0)
+  if (FontIndex == 0)
     return fontDat[ord(code)-0x20];
-  else if (currentFont == 1)
+  else if (FontIndex == 1)
     return fontBold[ord(code) - 0x20];
-  else if (currentFont == 2)
-    return fontIraric[ord(code) - 0x20];
-  else if (currentFont == 3)
+  else if (FontIndex == 2)
+    return fontItaric[ord(code) - 0x20];
+  else if (FontIndex == 3)
     return fontoutline[ord(code) - 0x20];
   return fontDat[0];
   }
