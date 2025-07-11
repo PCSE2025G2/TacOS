@@ -63,8 +63,8 @@ int swToNum(int sw) {
 //-----------------------------------------------------------------------------
 
 //グローバル変数の定義
-#define MAX_HISTORY 15
-#define MAX_PLAYLIST 15
+#define MAX_HISTORY 12
+#define MAX_PLAYLIST 12
 int volume_num = 3; 
 int speed_num = 5;   
 int currentFont = 0;
