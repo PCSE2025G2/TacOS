@@ -1,7 +1,0 @@
-/*
- * playlist.hmm : 字形をビットマップで返す
-
- */
-public int formatchange(){
-    return 0;
-}

@@ -1,8 +1,5 @@
 /*
- * playlist.hmm : 液晶ディスプレイのドライバ
- *
- * 2020.08.23 : 新規作成
- *
+ * playlist.cmm : プレイリストの保存管理
  */
 
-public void playlistMain();  
+public void playlistMain(char [][] listfile);  

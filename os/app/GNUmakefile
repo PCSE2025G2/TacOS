@@ -24,6 +24,6 @@
 # 2020.08.23 : 新規
 #
 
-OBJS= spi.o font.o lcd.o mp3Proc.o shellProc.o appUtil.o Files.o screen.o playlist.o tag.o format.o
+OBJS= spi.o font.o lcd.o mp3Proc.o shellProc.o appUtil.o Files.o screen.o playlist.o tag.o
 
 include ../Makefile.rul
