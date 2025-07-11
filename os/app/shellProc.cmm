@@ -12,7 +12,6 @@
 #include "shellProc.hmm"
 #include "playlist.hmm"
 #include "screen.hmm"
-#include "format.hmm"
 #include "tag.hmm"
 #include <fs.hmm>
 #include "appUtil.hmm"
