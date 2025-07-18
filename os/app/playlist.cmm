@@ -1,0 +1,40 @@
+/*
+ * playlist.cmm : プレイリストの保存管理
+ */
+#include <fs.hmm>
+#include "Files.hmm"
+#include <util.hmm>
+
+#define PL_BUF_LEN     16 
+#define PL_FILE "/playlist.txt"
+char[] buf = array(PL_BUF_LEN);
+
+/*--------------------------------------------------------------*/
+/* プレイリストを保存 （1 行 1 ファイル名, "\r\n" 区切り）      */
+/*--------------------------------------------------------------*/
+void saveplaylist(char[][] playlist)
+{
+    int fd = open(PL_FILE, WRITE_MODE);   /* 既存ファイルを上書き用に開く */
+    if (fd < 0) {                          /* 無ければ新規作成           */
+        fd = creat(PL_FILE);
+    }
+    if (fd < 0) return;                    
+
+    seek(fd, 0, 0);                       
+
+    int len;
+    for (int i = 0; i < 12; i = i + 1) {
+        char[] song = playlist[i];
+        len = strLen(song);
+        strCpy(buf, song);
+        buf[len]     = '\r';
+        buf[len + 1] = '\n';
+        write(fd, buf, len + 2);
+    }
+    close(fd);
+}
+
+
+public void playlistMain(char[][] playlist){
+        saveplaylist(playlist);
+    }

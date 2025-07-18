@@ -1,30 +1,6 @@
 /*
- * TacOS Source Code
- *    Tokuyama kousen Advanced educational Computer.
- *
- * Copyright (C) 2020 by
- *                      Dept. of Computer Science and Electronic Engineering,
- *                      Tokuyama College of Technology, JAPAN
- *
- *   上記著作権者は，Free Software Foundation によって公開されている GNU 一般公
- * 衆利用許諾契約書バージョン２に記述されている条件を満たす場合に限り，本ソース
- * コード(本ソースコードを改変したものを含む．以下同様)を使用・複製・改変・再配
- * 布することを無償で許諾する．
- *
- *   本ソースコードは＊全くの無保証＊で提供されるものである。上記著作権者および
- * 関連機関・個人は本ソースコードに関して，その適用可能性も含めて，いかなる保証
- * も行わない．また，本ソースコードの利用により直接的または間接的に生じたいかな
- * る損害に関しても，その責任を負わない．
- *
- *
- */
-
-/*
  * shellProc.cmm : MP3 プレーヤのメインプロセス
  *
- * 2020.09.07 : 新規作成
- *
- * $Id$
  *
  */
 #include <kernel.hmm>
@@ -32,8 +8,13 @@
 #include "lcd.hmm"
 #include "mp3Proc.hmm"
 #include "spi.hmm"
-#include "mp3Files.hmm"
+#include "Files.hmm"
 #include "shellProc.hmm"
+#include "playlist.hmm"
+#include "screen.hmm"
+#include "tag.hmm"
+#include <fs.hmm>
+#include "appUtil.hmm"
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -80,49 +61,821 @@ int swToNum(int sw) {
 //-----------------------------------------------------------------------------
 // 画面表示
 //-----------------------------------------------------------------------------
-void demoScreen() {
-  cls();                                            // LCDをクリアする
-  locateXY(0,0); putStr("MP3 Player demo");
-  for (int i=1; i<=5; i=i+1) {                      // スイッチ1〜5に付いて
-    locateXY(2,i+1);
-    putCh(chr(ord('0')+i));                         // スイッチの番号
-    putStr(":");
-    char[] fname = mp3FilesGetName(i);              // 対応するファイル名
-    if (fname!=null) putStr(fname);
-  }
-  locateXY(2,7);
-  putStr("6:stop");                                 // 6番のスイッチ
-}
+
+//グローバル変数の定義
+#define MAX_HISTORY 12
+#define MAX_PLAYLIST 12
+int volumeNum = 3; 
+int speedNum = 5;   
+int currentFont = 0;
+char[][] tagList = {"Norm", "Cool", "Cute", "Rock"};
+char[][] currentTag = null;
+int tagTargetSong = 0;
+int[] historyList = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int historyCount = 0;
+int playListCount = 0;
+int[] playList = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
+//曲選択画面
+int listOffset2 = 0;   
+int listOffset3 = 0;  
+int listOffset4 = 0;  
+int listOffset8 = 0;
+int listOffset9 = 0;
+int listOffset10 = 0;
+
+
 
 void asta(int y) {
-  demoScreen();
-  locateXY(0, y+1);
-  putCh('*');
+  locateXY(0, y);
+  putCh('>', currentFont);
 }
+
+//現在の曲のインデックスを取得
+int currentListIndex(int scr, int kersol) {
+  int off = 0;
+  if (scr == 2)       off = listOffset2;
+  else if (scr == 3)  off = listOffset3;
+  else if (scr == 4)  off = listOffset4;
+  return off + (kersol - 2) + 1;
+}
+
+//履歴操作
+void addHistory(int songIndex) {
+  if (historyCount > 0 && historyList[0] == songIndex)
+    return;
+  for (int i = MAX_HISTORY - 1; i > 0; i=i-1) {             // 履歴を後ろにずらす
+    historyList[i] = historyList[i - 1];
+  }
+  historyList[0] = songIndex;                              // 新しい曲を先頭に追加
+  if (historyCount < MAX_HISTORY) {
+    historyCount = historyCount + 1;
+  }
+}
+
+//プレイリスト操作
+#define PL_FILE "/playlist.txt"
+
+#define PL_NAME_LEN    13          
+#define PL_BUF_LEN     16         
+
+char[][] playlistNames = array(MAX_PLAYLIST, PL_NAME_LEN);
+
+int mp3FilesFindIndex(char[] name)
+{
+    int idx = 1;
+    char[] n;
+    while ((n = mp3FilesGetName(idx)) != null) {
+        if (strCmp(n, name) == 0) return idx;  
+        idx = idx + 1;
+    }
+    return -1;                            
+}
+
+/*--------------------------------------------------------------*/
+/* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
+/*   読み込んだファイル名を playlistNames[] に保存し，           */
+/*   同時に曲インデックスを playList[] に変換               */
+/*--------------------------------------------------------------*/
+char[] buf = array(PL_BUF_LEN);
+void playlistLoadFromTxt(char[] listFile)
+{
+    int fd = open(listFile, READ_MODE);
+    if (fd < 0) {                              
+        fd = creat(listFile);
+        close(fd);
+        playListCount = 0;
+        return;
+    }
+    int  i = 0, j = 0;
+    char ch;
+
+    for ( ; i < MAX_PLAYLIST && read(fd, buf, 1) == 1 ; ) {
+        ch = buf[0];
+
+        if (ch == '\r') continue;            
+
+        if (ch == '\n') {                    
+            playlistNames[i][j] = '\0';
+            playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+            if (playList[i] != -1) i = i + 1;  
+            j = 0;                          
+            continue;
+        }
+
+        if (j < PL_NAME_LEN - 1) {            
+            playlistNames[i][j] = ch;
+            j = j + 1;
+        }
+    }
+    // ファイル末尾が改行無しで終わった場合の処理 
+    if (j > 0 && i < MAX_PLAYLIST) {
+        playlistNames[i][j] = '\0';
+        playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+        if (playList[i] != -1) i = i + 1;
+    }
+    close(fd);
+    playListCount = i;
+}
+void addPlayList(int songIdx)
+{
+    if (playListCount >= MAX_PLAYLIST) return;
+
+    for (int i = 0; i < playListCount; i = i + 1)
+        if (playList[i] == songIdx) return;
+
+    playList[playListCount] = songIdx;
+    strCpy(playlistNames[playListCount], mp3FilesGetName(songIdx));
+    playListCount = playListCount + 1;
+}
+
+
+/*-------------------------------------------------------------*/
+/*  デバッグ用 : 現在のプレイリスト内容をシリアルへ出力        */
+/*-------------------------------------------------------------*/
+void dbgDumpPlayList(char[] tag)          /* tag は区別用ラベル */
+{
+    dbgPutStr("---- PlayList dump "); 
+    dbgPutStr(tag); 
+    dbgPutStr(" ----\n");
+
+    dbgPutStr("  count = ");
+    //dbgPutDec(playListCount); 
+    dbgPutStr("\n");
+
+    for (int k = 0; k < playListCount; k = k + 1) {
+        dbgPutStr("  [");
+        //dbgPutDec(k); 
+        dbgPutStr("] idx=");
+        //dbgPutDec(playList[k]);
+
+        dbgPutStr("  name=");
+        dbgPutStr(playlistNames[k]);      /* 改行は入っていないので…   */
+        dbgPutStr("\n");
+    }
+    dbgPutStr("-------------------------------\n");
+}
+
+// playlist から 1 曲削除 
+void removePlayList(int songIdx)
+{
+    dbgDumpPlayList("before-remove");
+    int i = 0;
+    while (i < playListCount && playList[i] != songIdx) i=i+1;
+
+    if (i == playListCount) return;        
+
+    for (; i < playListCount-1; i=i+1) {
+        playList[i] = playList[i+1];
+        strCpy(playlistNames[i], playlistNames[i+1]);
+    }
+    playListCount = playListCount-1;
+
+    //末尾をクリア
+    playList[playListCount] = -1;
+    playlistNames[playListCount][0] = '\0';
+    dbgDumpPlayList("after-remove"); 
+}
+
+
+void demoScreen(int screenId, int kersol, int SongIndex) {
+  cls(currentFont);   // LCDをクリアする
+  char[][] scr = screen(chr(screenId));
+  if (scr == null) return;
+
+  int off = 0;
+  if (screenId == 2)       off = listOffset2;
+  else if (screenId == 3)  off = listOffset3;
+  else if (screenId == 4)  off = listOffset4;
+  else if (screenId == 9)  off = listOffset9;
+  else if (screenId == 10)  off = listOffset10;
+
+  // 8.ヘルプ画面でのスクロール
+  if (screenId == 8) {
+      locateXY(0, 0);
+      putStr(scr[0], currentFont);
+      locateXY(1, 1);
+      putStr(scr[1], currentFont);          
+      for (int row = 2; row < 8; row = row + 1) {
+          int idx = 2 + listOffset8 + (row - 2);
+          char[] line = scr[idx];
+          locateXY(1, row);
+          if (line != null) {
+              putStr(line, currentFont);
+          } 
+      }
+      asta(kersol);
+      return;  
+  }
+
+  for (int row = 0; row < 8; row = row + 1) {
+    if (row == 0) {
+      locateXY(0, row);       // タイトル行は左端から表示
+      putStr(scr[row], currentFont);
+    } else {
+      locateXY(1, row);       // それ以外の行は1マス開けて表示
+      putStr(scr[row], currentFont);
+    }
+    // 3.曲選択画面でBack以降に履歴の曲一覧を表示
+    if (screenId == 3 && row >= 2) {
+        int idx = off + (row - 2);
+        if (idx < historyCount) {
+          int songIdx = historyList[idx];
+          locateXY(1, row);
+          putDec(idx + 1, 1, currentFont);
+          putStr(".", currentFont);
+          putStr(mp3FilesGetName(songIdx), currentFont);
+        }
+    }  
+    // 2.10.曲選択画面でBack以降に曲一覧を表示
+    if ((screenId == 2  || screenId == 10) && row >= 2) {
+        int idx = off + (row - 2) + 1;          // 実際の曲インデックス
+        char[] name = mp3FilesGetName(idx);
+        if (name != null) {
+            locateXY(1, row);
+            putStr(name, currentFont);
+        }
+    }
+    //4.プレイリストに保存した曲を表示
+    else if (screenId == 4 && row >= 2) {
+        int idx = off + (row - 2);
+        if (idx < playListCount) {
+            int songIdx = playList[idx];
+            locateXY(1, row);
+            putDec(idx + 1, 1, currentFont);
+            putStr(".", currentFont);
+            putStr(mp3FilesGetName(songIdx), currentFont);
+        }
+    }
+    // 9.プレイリスト編集画面でregister以降に曲一覧を表示
+    else if (screenId == 9 && row >= 3) {
+        int idx = off + (row - 2) + 1;
+        char[] name = mp3FilesGetName(idx);  
+        if (name != null) {
+        boolean inPL = false;
+        for (int i = 0; i < playListCount; i=i+1)
+            if (playList[i] == idx) { inPL = true; break; }
+
+        locateXY(1, row);  
+        if (inPL){
+          putCh('+', currentFont);
+        }                
+        else{
+          putCh('-', currentFont);
+        }
+        putStr(" ", currentFont);
+        putStr(name, currentFont);
+        }
+    }
+
+    // 5. 6. 7.曲再生画面で速度と音量を表示
+    if ((screenId == 5 && row == 5) || (screenId == 6 && row == 5) || (screenId == 7 && row == 5)) {  
+      locateXY(8, 4);                  
+      putDec(speedNum, 1, currentFont); 
+      locateXY(8, 5);                  
+      putDec(volumeNum, 1, currentFont);                                  
+    }
+    // 曲再生画面とTag編集画面の右上にTag名を表示
+    if ((screenId == 5 || screenId == 6 || screenId == 7 || screenId == 11) && row == 0) {
+      locateXY(12, 0);
+      putStr(currentTag[SongIndex], currentFont);
+    }
+  }
+  // 5. 6. 7.曲再生画面で現在再生中の曲名を表示
+  if (screenId==5 || screenId==6 || screenId==7){
+    locateXY(0, 0);
+    putStr(mp3FilesGetName(SongIndex), currentFont);
+  }
+  // 現在のカーソル位置を表示
+  asta(kersol);
+}
+
 
 //-----------------------------------------------------------------------------
 // MP3 プレーヤのメインプロセス
 //-----------------------------------------------------------------------------
 // ここからプロセスの実行が始まる
 public void shellMain() {
-  spiResetLcd();                                    // sleepを使用するので
-  spiResetMp3();                                    //   プロセスが実行する
-  mp3FilesInit();                                   // ファイル一覧を作る
-  demoScreen();                                     // 画面を初期化
+  dbgPutStr("start");
+  int kersol = 1;
+  int PlayStopFlag = 1;
+  int SongIndex = 1;
+  int currentScreen = 0;
+  boolean volSelect = false;     
+  boolean speedSelect = false;                           
+
+  spiResetLcd();      // sleepを使用するので
+  spiResetMp3();      // プロセスが実行する
+  mp3FilesInit();     // ファイル一覧を作る
+  playlistLoadFromTxt(PL_FILE);
+
+  currentTag = tagsLoadFromTxt("/taglist.txt");
+
+  demoScreen(currentScreen, kersol, SongIndex);
+
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
-    if (num==6) {                                   // 6 番のスイッチが押された
-      dbgPutStr("stop\n");
-      demoScreen();                                 // 画面を初期化
-      stop();
-    } else if (num>0 && mp3FilesGetName(num)!=null) { // ファイルと対応するボタン
-      demoScreen();                                 // 画面を初期化
-      asta(num);                                    // 再生中の曲に印を表示
-      play(mp3FilesGetPath(num));                   // 再生開始
-      dbgPutStr(mp3FilesGetPath(num));
-      dbgPutStr("\n");
+
+    // 音量調節
+    if (volSelect) {
+      if (num == 1 && volumeNum < 5){ // VolumeNum up
+        volumeNum = volumeNum + 1;
+
+        volume(volumeNum);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } 
+      else if (num == 5 && volumeNum > 1) {  // VolumeNum down
+        volumeNum = volumeNum - 1;
+        volume(volumeNum);
+        demoScreen(currentScreen, kersol, SongIndex);
+      } 
+      else if (num == 3) {
+      volSelect = false;
+      }
     }
-    sleep(10);                                      // 10ms に一度
+    // 速度調節
+    else if (speedSelect) {
+      /* ↑キー：スピードアップ */
+      if (num == 1 && speedNum < 5) {
+        speedNum = speedNum + 1;
+        speed(speedNum, SongIndex);
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      /* ↓キー：スピードダウン */
+      else if (num == 5 && speedNum > 1) {
+        speedNum = speedNum - 1;
+        speed(speedNum, SongIndex);
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+
+      /* 決定キー：速度設定終了 */
+      else if (num == 3) {
+        speedSelect = false;
+      }
+    }
+
+
+    //カーソルの上下移動の定義
+    else if (num == 1) {
+        if (kersol == 2 && currentScreen == 2 && listOffset2 > 0) {
+            listOffset2 = listOffset2 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 3 && listOffset3 > 0) {
+            listOffset3 = listOffset3 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 4 && listOffset4 > 0) {
+            listOffset4 = listOffset4 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 8 && listOffset8 > 0) {
+            listOffset8 = listOffset8 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 3 && currentScreen == 9 && listOffset9 > 0) {
+            listOffset9 = listOffset9 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol == 2 && currentScreen == 10 && listOffset10 > 0) {
+            listOffset10 = listOffset10 - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        else if (kersol > 1) {          // 通常の 1 行上移動
+            kersol = kersol - 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+        if (currentScreen == 4 && kersol >= 2) {
+            SongIndex = playList[listOffset4 + (kersol - 2)];
+        } 
+        else if ((currentScreen == 2 || currentScreen == 3) && kersol >= 2) {
+            SongIndex = currentListIndex(currentScreen, kersol);
+        }
+      }
+    
+
+    else if (num == 5) {
+      /* ---- 一番下の場合，最初へジャンプ ---- */
+      if (kersol == 7 && currentScreen == 2 &&
+          mp3FilesGetName(listOffset2 + 6 + 1) == null) {  
+          listOffset2 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 3 &&
+              (listOffset3 + 6) >= historyCount - 1) {
+          listOffset3 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 4 &&
+          mp3FilesGetName(listOffset4 + 6 + 1) == null) {
+          listOffset4 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 8 &&
+          screen(chr(8))[listOffset8 + 6 + 2][0] == '\0') {
+          listOffset8 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 9 &&
+          mp3FilesGetName(listOffset9 + 6 + 1) == null) {
+          listOffset9 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 10 &&
+              mp3FilesGetName(listOffset10 + 6 + 1) == null) {
+          listOffset10 = 0;
+          kersol = 2;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+
+
+      /* ---- スクロール ---- */
+      else if (kersol == 7 && currentScreen == 2 &&
+          mp3FilesGetName(listOffset2 + 6 + 1) != null) {
+          listOffset2 = listOffset2 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 3 &&
+              (listOffset3 + 7) < historyCount) {
+          listOffset3 = listOffset3 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 4 &&
+          mp3FilesGetName(listOffset4 + 6 + 1) != null) {
+          listOffset4 = listOffset4 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 8 &&
+          screen(chr(8))[listOffset8 + 6 + 2][0] != '\0') {
+          listOffset8 = listOffset8 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 9 &&
+              mp3FilesGetName(listOffset9 + 6 + 1) != null) {
+          listOffset9 = listOffset9 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 7 && currentScreen == 10 &&
+              mp3FilesGetName(listOffset10 + 6 + 1) != null) {
+          listOffset10 = listOffset10 + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+
+      /* ---- 1 行下移動 ---- */
+      else if ( (kersol < 5 && currentScreen == 0) ||
+                (kersol < 4 && currentScreen == 1) ||
+                (kersol < 7 && currentScreen == 2) ||
+                (kersol < 7 && currentScreen == 3) ||
+                (kersol < 7 && currentScreen == 4) ||
+                (kersol < 6 && currentScreen == 5) ||
+                (kersol < 6 && currentScreen == 6) ||
+                (kersol < 6 && currentScreen == 7) ||
+                (kersol < 7 && currentScreen == 8) ||
+                (kersol < 7 && currentScreen == 9) ||
+                (kersol < 7 && currentScreen == 10) ||
+                (kersol < 5 && currentScreen == 11) ||
+                (kersol < 5 && currentScreen == 12) 
+                ) {
+          kersol = kersol + 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+      }
+      if ((currentScreen == 2 || currentScreen == 3 || currentScreen == 4) &&
+          kersol >= 2) {
+          SongIndex = currentListIndex(currentScreen, kersol);
+      }
+    }
+
+
+    // ストップボタン（曲再生中）
+    else if (num == 6) {
+      dbgPutStr("stop\n");
+      stop();
+      PlayStopFlag = 1;
+    }
+    // 戻るボタンの定義
+    else if (num == 4) {
+      if (currentScreen == 1) {
+        currentScreen = 0; 
+      } else if (currentScreen == 2) {
+        currentScreen = 1;
+        listOffset2 = 0; 
+      } else if (currentScreen == 3) {
+        currentScreen = 1;
+        listOffset3 = 0; 
+      } else if (currentScreen == 4) {
+        currentScreen = 1;
+        listOffset4 = 0; 
+      } else if (currentScreen == 5) {
+        currentScreen = 2;  
+      } else if (currentScreen == 6) {
+        currentScreen = 3; 
+      } else if (currentScreen == 7) {
+        currentScreen = 4;
+      } else if (currentScreen == 8) {
+        listOffset8 = 0;
+        currentScreen = 0;
+      } else if (currentScreen == 9) {
+        listOffset9 = 0;
+        currentScreen = 0;
+      } else if (currentScreen == 10) {
+        currentScreen = 0;
+        listOffset10 = 0;
+      } else if (currentScreen == 11) {
+        currentScreen = 10;
+      } else if (currentScreen == 12) {
+        currentScreen = 0;
+      }
+      kersol = 1;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+
+  // 決定ボタンの処理
+  else if (num == 3) {
+  /* =========================
+  currentScreen == 0 : Menu
+  ========================= */
+    if (currentScreen == 0) {
+      if (kersol == 1) {                 // Play songs
+        currentScreen = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 2) {            // Edit PlayList
+        currentScreen = 9;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 3) {            // Tag
+        currentScreen = 10;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 4) {            // Format
+        currentScreen = 12;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 5) {            // Help
+        currentScreen = 8;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  /* =========================================
+  currentScreen == 1 : Play-songs サブメニュー
+  ========================================= */
+    else if (currentScreen == 1) {
+      if (kersol == 1) {                 // Song selection
+        currentScreen = 2;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 2) {            // History
+        currentScreen = 3;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 3) {            // PlayList
+        currentScreen = 4;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 4) {            // Back
+        currentScreen = 0;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  /* ==============================
+  currentScreen == 2 : Song list
+  ============================== */
+    else if (currentScreen == 2) {
+      listOffset2 = 0;
+      if (kersol == 1) {                 // Back
+        currentScreen = 1;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else {                             // Play selected song
+        currentScreen = 5;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  /* =============================
+  currentScreen == 3 : History
+  ============================= */
+    else if (currentScreen == 3) {
+      listOffset3 = 0;
+      if (kersol == 1) {                 // Back
+        currentScreen = 1;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else {                             
+        int idx = listOffset3 + (kersol - 2);  
+        if (historyCount > 0 &&
+            idx >= 0 && idx < historyCount) {
+          SongIndex = historyList[idx];      
+          currentScreen = 6;
+          kersol = 1;
+          demoScreen(currentScreen, kersol, SongIndex);
+        }
+      }
+    }
+
+  /* ==============================
+  currentScreen == 4 : PlayList
+  ============================== */
+    else if (currentScreen == 4) {
+      listOffset4 = 0; 
+      if (kersol == 1) {                 // Back
+        currentScreen = 1;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else {                             // Play from playlist
+        int idx = listOffset4 + (kersol - 2);
+        if (idx >= 0 && idx < playListCount) {
+            SongIndex = playList[idx];
+            currentScreen = 7;          /* 再生用画面 */
+            kersol = 1;
+            demoScreen(currentScreen, kersol, SongIndex);
+        }
+      }
+    }
+
+  /* =====================================
+  currentScreen == 5, 6, 7 : Playing a track
+  ===================================== */
+    else if (currentScreen == 5 || currentScreen == 6 || currentScreen == 7) {
+      if (kersol == 1) {                 // Play / Stop
+        if (PlayStopFlag == 1) {
+          if (currentScreen == 5) {
+            play(mp3FilesGetPath(SongIndex));
+            addHistory(SongIndex);
+          } else if (currentScreen == 6) {
+            play(mp3FilesGetPath(SongIndex));
+          } else if (currentScreen == 7) {
+            play(mp3FilesGetPath(SongIndex));
+          }
+          PlayStopFlag = 0;
+        } else {
+          dbgPutStr("stop\n");
+          stop();
+          PlayStopFlag = 1;
+        }
+      }
+
+      /* Next / Previous の判定 */
+      else if (kersol == 2 || kersol == 3) {        /* 2:Next, 3:Prev */
+        int dir = 0;
+        if (kersol == 2)
+        {
+          dir = 1;
+        }
+        else{
+            dir = -1;
+        }
+          int nextIdx = jumpMusic(
+                            currentScreen,       
+                            SongIndex,          
+                            dir,              
+                            historyCount, historyList,
+                            playListCount, playList);
+
+          if (nextIdx != SongIndex) {            
+              stop();                           
+              PlayStopFlag = 1;
+              SongIndex = nextIdx;               
+              demoScreen(currentScreen, kersol, SongIndex);
+          }
+      }
+
+      else if (kersol == 4) {             // Speed
+        speedSelect = true;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 5) {             // VolumeNum
+        volSelect = true;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 6) {             // Back to song list
+        if (currentScreen == 5) currentScreen = 2;
+        if (currentScreen == 6) currentScreen = 3;
+        if (currentScreen == 7) currentScreen = 4;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+
+  /* =========================
+  currentScreen == 8 : Help
+  ========================= */
+    else if (currentScreen == 8) {
+      if (kersol == 1) {                  // Back
+        currentScreen = 0;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  /* =================================
+  currentScreen == 9 : Playlist edit
+  ================================= */
+    else if (currentScreen == 9) {
+      if (kersol == 1) {                  // Back
+        currentScreen = 0;
+        kersol = 1;
+        listOffset9 = 0;
+        playlistLoadFromTxt(PL_FILE);
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol == 2) {            
+        playlistMain(playlistNames);
+        playlistLoadFromTxt(PL_FILE);
+        currentScreen = 0;
+        kersol = 1;
+        listOffset9 = 0;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol >= 3) {                   
+          int songIdx = listOffset9 + (kersol - 2) + 1;
+          if (mp3FilesGetName(songIdx) != null) {
+              boolean inPL = false;
+              for (int i = 0; i < playListCount; i = i + 1)
+                  if (playList[i] == songIdx) { inPL = true; break; }
+
+              if (inPL) {
+                  removePlayList(songIdx);        // 削除して「-」に戻す 
+              } else {
+                  addPlayList(songIdx);          
+              }
+              demoScreen(currentScreen, kersol, SongIndex);   
+          }
+      }
+    }
+
+  /* ============================
+  currentScreen == 10 : Tag menu
+  ============================ */
+    else if (currentScreen == 10) {
+      if (kersol == 1) {                  // Back
+        currentScreen = 0;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else {                              // Tag edit
+        tagTargetSong = listOffset10 + (kersol - 2) + 1;
+        SongIndex = tagTargetSong;
+        currentScreen = 11;    
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  /* ==============================
+  currentScreen == 11 : Tag edit
+  ============================== */
+    else if (currentScreen == 11) {
+      if (kersol == 1) {                  // Back
+        currentScreen = 10;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol >= 2 && kersol <= 5) {  // Rockまで、kersolは5まで
+        currentTag[tagTargetSong] = tagList[kersol - 2];
+        tagMain(currentTag);
+        currentTag = tagsLoadFromTxt("/taglist.txt");
+        currentScreen = 10;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);   
+      }
+    }
+
+  /* ==============================
+  currentScreen == 12 : Format
+  ============================== */
+    else if (currentScreen == 12) {
+      if (kersol == 1) {                  // Back
+        currentScreen = 0;
+        kersol = 1;
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+      else if (kersol >= 2 && kersol <= 7) { // Font choice
+        currentFont = kersol - 2;         // 0 〜
+        demoScreen(currentScreen, kersol, SongIndex);
+      }
+    }
+
+  } 
+    sleep(10);
   }
 }

@@ -1,0 +1,5 @@
+/*
+ * playlist.cmm : プレイリストの保存管理
+ */
+
+public void playlistMain(char [][] listfile);  

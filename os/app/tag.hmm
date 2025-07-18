@@ -1,0 +1,5 @@
+/*
+ * playlist.hmm : 液晶ディスプレイのドライバ
+ */
+
+public void tagMain(char[][] tag);

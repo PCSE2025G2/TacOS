@@ -1,0 +1,160 @@
+char[][][] screenDat = {
+  // 0.Menu 画面
+  {
+    "Menu",
+    "Play songs",
+    "Edit PlayList",
+    "Tag",
+    "Format",
+    "Help",
+    "1:up 3:decision",
+    "4:back 5:down"
+  },
+  // 1.Play songs（曲再生方法選択）画面
+  {
+    "Play songs",
+    "Song select",
+    "History",
+    "PlayList",
+    "Back",
+    "",
+    "",
+    ""
+  },
+  // 2.Song select（曲選択）画面
+  {
+    "Song selec",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // 3.History（履歴）画面
+  {
+    "History",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // 4.PlayList（プレイリスト）画面
+  {
+    "PlayList",
+    "Back",
+    "",
+    "",
+    "",
+    "", 
+    "",
+    ""
+  },
+  // 5.Play control（曲再生）画面（曲選択）
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+  // 6.Play control（曲再生）画面（履歴）
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+  // 7.Play control（曲再生）画面（プレイリスト）
+  {
+    "",
+    "Play/Stop",
+    "Next",
+    "Previous",
+    "Speed",
+    "Volume",
+    "Back",
+    ""
+  },
+
+  // 8.Help（ヘルプ）画面
+  {
+    "Help",
+    "Back",
+    "Menu",
+    ":Play songs",
+    " :Song select",
+    "  :Play control",
+    " :History",
+    "  :Play control",
+    " :PlayList",
+    "  :Play control",
+    ":Edit PlayList",
+    ":Tag",
+    " :Edit Tag",
+    ":Format",
+    ":Help <- now!",
+    ""
+  },
+  // 9.Edit PlayList（プレイリスト編集）画面
+  {
+    "Edit PlayList",
+    "Back",
+    "Register",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // 10.Tag（タグ）画面
+  {
+    "Tag",
+    "Back",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  },
+  // 11.Edit Tag（タグ編集）画面
+  {
+    "Edit Tag",
+    "Back",
+    "Norm",
+    "Cool",
+    "Cute",
+    "Rock",
+    "",
+    ""
+
+  },
+  // 12.Format（フォーマット）画面
+  {
+    "Format",
+    "Back",
+    "Gothic",
+    "Bold",
+    "Itaric",
+    "outline",
+    "",
+    ""
+  }
+};
+
+public char[][] screen(char code) {
+  int idx = ord(code);
+  return screenDat[idx];
+}
