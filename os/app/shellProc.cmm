@@ -65,16 +65,16 @@ int swToNum(int sw) {
 //グローバル変数の定義
 #define MAX_HISTORY 12
 #define MAX_PLAYLIST 12
-int volume_num = 3; 
-int speed_num = 5;   
+int volumeNum = 3; 
+int speedNum = 5;   
 int currentFont = 0;
-char[][] tag_list = {"Norm", "Cool", "Cute", "Rock"};
+char[][] tagList = {"Norm", "Cool", "Cute", "Rock"};
 char[][] currentTag = null;
 int tagTargetSong = 0;
-int[] history_list = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int[] historyList = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int historyCount = 0;
-int playlistCount = 0;
-int[] playlist_list = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
+int playListCount = 0;
+int[] playList = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
@@ -101,12 +101,12 @@ int currentListIndex(int scr, int kersol) {
 
 //履歴操作
 void addHistory(int songIndex) {
-  if (historyCount > 0 && history_list[0] == songIndex)
+  if (historyCount > 0 && historyList[0] == songIndex)
     return;
   for (int i = MAX_HISTORY - 1; i > 0; i=i-1) {             // 履歴を後ろにずらす
-    history_list[i] = history_list[i - 1];
+    historyList[i] = historyList[i - 1];
   }
-  history_list[0] = songIndex;                              // 新しい曲を先頭に追加
+  historyList[0] = songIndex;                              // 新しい曲を先頭に追加
   if (historyCount < MAX_HISTORY) {
     historyCount = historyCount + 1;
   }
@@ -134,7 +134,7 @@ int mp3FilesFindIndex(char[] name)
 /*--------------------------------------------------------------*/
 /* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
 /*   読み込んだファイル名を playlistNames[] に保存し，           */
-/*   同時に曲インデックスを playlist_list[] に変換               */
+/*   同時に曲インデックスを playList[] に変換               */
 /*--------------------------------------------------------------*/
 char[] buf = array(PL_BUF_LEN);
 void playlistLoadFromTxt(char[] listFile)
@@ -143,7 +143,7 @@ void playlistLoadFromTxt(char[] listFile)
     if (fd < 0) {                              
         fd = creat(listFile);
         close(fd);
-        playlistCount = 0;
+        playListCount = 0;
         return;
     }
     int  i = 0, j = 0;
@@ -156,8 +156,8 @@ void playlistLoadFromTxt(char[] listFile)
 
         if (ch == '\n') {                    
             playlistNames[i][j] = '\0';
-            playlist_list[i]   = mp3FilesFindIndex(playlistNames[i]);
-            if (playlist_list[i] != -1) i = i + 1;  
+            playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+            if (playList[i] != -1) i = i + 1;  
             j = 0;                          
             continue;
         }
@@ -170,22 +170,22 @@ void playlistLoadFromTxt(char[] listFile)
     // ファイル末尾が改行無しで終わった場合の処理 
     if (j > 0 && i < MAX_PLAYLIST) {
         playlistNames[i][j] = '\0';
-        playlist_list[i]   = mp3FilesFindIndex(playlistNames[i]);
-        if (playlist_list[i] != -1) i = i + 1;
+        playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+        if (playList[i] != -1) i = i + 1;
     }
     close(fd);
-    playlistCount = i;
+    playListCount = i;
 }
 void addPlayList(int songIdx)
 {
-    if (playlistCount >= MAX_PLAYLIST) return;
+    if (playListCount >= MAX_PLAYLIST) return;
 
-    for (int i = 0; i < playlistCount; i = i + 1)
-        if (playlist_list[i] == songIdx) return;
+    for (int i = 0; i < playListCount; i = i + 1)
+        if (playList[i] == songIdx) return;
 
-    playlist_list[playlistCount] = songIdx;
-    strCpy(playlistNames[playlistCount], mp3FilesGetName(songIdx));
-    playlistCount = playlistCount + 1;
+    playList[playListCount] = songIdx;
+    strCpy(playlistNames[playListCount], mp3FilesGetName(songIdx));
+    playListCount = playListCount + 1;
 }
 
 
@@ -199,14 +199,14 @@ void dbgDumpPlayList(char[] tag)          /* tag は区別用ラベル */
     dbgPutStr(" ----\n");
 
     dbgPutStr("  count = ");
-    //dbgPutDec(playlistCount); 
+    //dbgPutDec(playListCount); 
     dbgPutStr("\n");
 
-    for (int k = 0; k < playlistCount; k = k + 1) {
+    for (int k = 0; k < playListCount; k = k + 1) {
         dbgPutStr("  [");
         //dbgPutDec(k); 
         dbgPutStr("] idx=");
-        //dbgPutDec(playlist_list[k]);
+        //dbgPutDec(playList[k]);
 
         dbgPutStr("  name=");
         dbgPutStr(playlistNames[k]);      /* 改行は入っていないので…   */
@@ -220,19 +220,19 @@ void removePlayList(int songIdx)
 {
     dbgDumpPlayList("before-remove");
     int i = 0;
-    while (i < playlistCount && playlist_list[i] != songIdx) i=i+1;
+    while (i < playListCount && playList[i] != songIdx) i=i+1;
 
-    if (i == playlistCount) return;        
+    if (i == playListCount) return;        
 
-    for (; i < playlistCount-1; i=i+1) {
-        playlist_list[i] = playlist_list[i+1];
+    for (; i < playListCount-1; i=i+1) {
+        playList[i] = playList[i+1];
         strCpy(playlistNames[i], playlistNames[i+1]);
     }
-    playlistCount = playlistCount-1;
+    playListCount = playListCount-1;
 
     //末尾をクリア
-    playlist_list[playlistCount] = -1;
-    playlistNames[playlistCount][0] = '\0';
+    playList[playListCount] = -1;
+    playlistNames[playListCount][0] = '\0';
     dbgDumpPlayList("after-remove"); 
 }
 
@@ -279,7 +279,7 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
     if (screenId == 3 && row >= 2) {
         int idx = off + (row - 2);
         if (idx < historyCount) {
-          int songIdx = history_list[idx];
+          int songIdx = historyList[idx];
           locateXY(1, row);
           putDec(idx + 1, 1, currentFont);
           putStr(".", currentFont);
@@ -298,8 +298,8 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
     //4.プレイリストに保存した曲を表示
     else if (screenId == 4 && row >= 2) {
         int idx = off + (row - 2);
-        if (idx < playlistCount) {
-            int songIdx = playlist_list[idx];
+        if (idx < playListCount) {
+            int songIdx = playList[idx];
             locateXY(1, row);
             putDec(idx + 1, 1, currentFont);
             putStr(".", currentFont);
@@ -312,8 +312,8 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
         char[] name = mp3FilesGetName(idx);  
         if (name != null) {
         boolean inPL = false;
-        for (int i = 0; i < playlistCount; i=i+1)
-            if (playlist_list[i] == idx) { inPL = true; break; }
+        for (int i = 0; i < playListCount; i=i+1)
+            if (playList[i] == idx) { inPL = true; break; }
 
         locateXY(1, row);  
         if (inPL){
@@ -330,9 +330,9 @@ void demoScreen(int screenId, int kersol, int SongIndex) {
     // 5. 6. 7.曲再生画面で速度と音量を表示
     if ((screenId == 5 && row == 5) || (screenId == 6 && row == 5) || (screenId == 7 && row == 5)) {  
       locateXY(8, 4);                  
-      putDec(speed_num, 1, currentFont); 
+      putDec(speedNum, 1, currentFont); 
       locateXY(8, 5);                  
-      putDec(volume_num, 1, currentFont);                                  
+      putDec(volumeNum, 1, currentFont);                                  
     }
     // 曲再生画面とTag編集画面の右上にTag名を表示
     if ((screenId == 5 || screenId == 6 || screenId == 7 || screenId == 11) && row == 0) {
@@ -378,15 +378,15 @@ public void shellMain() {
 
     // 音量調節
     if (volSelect) {
-      if (num == 1 && volume_num < 5){ // Volume_num up
-        volume_num = volume_num + 1;
+      if (num == 1 && volumeNum < 5){ // VolumeNum up
+        volumeNum = volumeNum + 1;
 
-        volume(volume_num);
+        volume(volumeNum);
         demoScreen(currentScreen, kersol, SongIndex);
       } 
-      else if (num == 5 && volume_num > 1) {  // Volume_num down
-        volume_num = volume_num - 1;
-        volume(volume_num);
+      else if (num == 5 && volumeNum > 1) {  // VolumeNum down
+        volumeNum = volumeNum - 1;
+        volume(volumeNum);
         demoScreen(currentScreen, kersol, SongIndex);
       } 
       else if (num == 3) {
@@ -396,15 +396,15 @@ public void shellMain() {
     // 速度調節
     else if (speedSelect) {
       /* ↑キー：スピードアップ */
-      if (num == 1 && speed_num < 5) {
-        speed_num = speed_num + 1;
-        speed(speed_num, SongIndex);
+      if (num == 1 && speedNum < 5) {
+        speedNum = speedNum + 1;
+        speed(speedNum, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
       }
       /* ↓キー：スピードダウン */
-      else if (num == 5 && speed_num > 1) {
-        speed_num = speed_num - 1;
-        speed(speed_num, SongIndex);
+      else if (num == 5 && speedNum > 1) {
+        speedNum = speedNum - 1;
+        speed(speedNum, SongIndex);
         demoScreen(currentScreen, kersol, SongIndex);
       }
 
@@ -446,7 +446,7 @@ public void shellMain() {
             demoScreen(currentScreen, kersol, SongIndex);
         }
         if (currentScreen == 4 && kersol >= 2) {
-            SongIndex = playlist_list[listOffset4 + (kersol - 2)];
+            SongIndex = playList[listOffset4 + (kersol - 2)];
         } 
         else if ((currentScreen == 2 || currentScreen == 3) && kersol >= 2) {
             SongIndex = currentListIndex(currentScreen, kersol);
@@ -682,7 +682,7 @@ public void shellMain() {
         int idx = listOffset3 + (kersol - 2);  
         if (historyCount > 0 &&
             idx >= 0 && idx < historyCount) {
-          SongIndex = history_list[idx];      
+          SongIndex = historyList[idx];      
           currentScreen = 6;
           kersol = 1;
           demoScreen(currentScreen, kersol, SongIndex);
@@ -702,8 +702,8 @@ public void shellMain() {
       }
       else {                             // Play from playlist
         int idx = listOffset4 + (kersol - 2);
-        if (idx >= 0 && idx < playlistCount) {
-            SongIndex = playlist_list[idx];
+        if (idx >= 0 && idx < playListCount) {
+            SongIndex = playList[idx];
             currentScreen = 7;          /* 再生用画面 */
             kersol = 1;
             demoScreen(currentScreen, kersol, SongIndex);
@@ -747,8 +747,8 @@ public void shellMain() {
                             currentScreen,       
                             SongIndex,          
                             dir,              
-                            historyCount, history_list,
-                            playlistCount, playlist_list);
+                            historyCount, historyList,
+                            playListCount, playList);
 
           if (nextIdx != SongIndex) {            
               stop();                           
@@ -762,7 +762,7 @@ public void shellMain() {
         speedSelect = true;
         demoScreen(currentScreen, kersol, SongIndex);
       }
-      else if (kersol == 5) {             // Volume_num
+      else if (kersol == 5) {             // VolumeNum
         volSelect = true;
         demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -810,8 +810,8 @@ public void shellMain() {
           int songIdx = listOffset9 + (kersol - 2) + 1;
           if (mp3FilesGetName(songIdx) != null) {
               boolean inPL = false;
-              for (int i = 0; i < playlistCount; i = i + 1)
-                  if (playlist_list[i] == songIdx) { inPL = true; break; }
+              for (int i = 0; i < playListCount; i = i + 1)
+                  if (playList[i] == songIdx) { inPL = true; break; }
 
               if (inPL) {
                   removePlayList(songIdx);        // 削除して「-」に戻す 
@@ -851,7 +851,7 @@ public void shellMain() {
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol >= 2 && kersol <= 5) {  // Rockまで、kersolは5まで
-        currentTag[tagTargetSong] = tag_list[kersol - 2];
+        currentTag[tagTargetSong] = tagList[kersol - 2];
         tagMain(currentTag);
         currentTag = tagsLoadFromTxt("/taglist.txt");
         currentScreen = 10;

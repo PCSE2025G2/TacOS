@@ -97,7 +97,7 @@ char[][] fontDat =
         {'\x02', '\x03', '\x01', '\x03', '\x02', '\x03', '\x01', '\x00'}  // 7e(~)
 };
 
-char[][] fontBold =
+char[][] fontBoldDat =
     {
         {'\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00'}, // 20( )
         {'\x00', '\x00', '\x07', '\x7f', '\x7f', '\x07', '\x00', '\x00'}, // 21(!)
@@ -200,7 +200,7 @@ char[][] fontBold =
  *   行 r のシフト量 = r / 2 dot
  *   元フォントは 0x20 (‘ ’) ～ 0x7E (‘~’) の 95 文字
  */
-char[][] fontItaric =
+char[][] fontItaricDat =
     {
         {'\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00'}, // 20( )
         {'\x00', '\x00', '\x03', '\x2f', '\x17', '\x01', '\x00', '\x00'}, // 21(!)
@@ -299,7 +299,7 @@ char[][] fontItaric =
         {'\x01', '\x01', '\x00', '\x01', '\x00', '\x00', '\x00', '\x00'}  // 7e(~)
     };
 /* ---------- 縁取りアウトライン ---------- */
-char[][] fontoutline =
+char[][] fontOutlineDat =
     {
         {'\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00'}, // 20( )
         {'\x00', '\x0f', '\xf9', '\xa0', '\xa0', '\xf9', '\x0f', '\x00'}, // 21(!)
@@ -399,17 +399,17 @@ char[][] fontoutline =
     };
 
 
-public char[] font(char code, int FontIndex) {
+public char[] font(char code, int fontIndex) {
   if (ord(code)<=0x20) return fontDat[0];
   if (ord(code)>=0x7f) return fontDat[0];
-  if (FontIndex == 0)
+  if (fontIndex == 0)
     return fontDat[ord(code)-0x20];
-  else if (FontIndex == 1)
-    return fontBold[ord(code) - 0x20];
-  else if (FontIndex == 2)
-    return fontItaric[ord(code) - 0x20];
-  else if (FontIndex == 3)
-    return fontoutline[ord(code) - 0x20];
+  else if (fontIndex == 1)
+    return fontBoldDat[ord(code) - 0x20];
+  else if (fontIndex == 2)
+    return fontItaricDat[ord(code) - 0x20];
+  else if (fontIndex == 3)
+    return fontOutlineDat[ord(code) - 0x20];
   return fontDat[0];
   }
   

@@ -12,7 +12,7 @@
 #define TAG_LEN    16
 #define TAG_LEN_PLUS2 18
 
-int numTag = 0; 
+
 char[] buf = array(TAG_LEN_PLUS2);
 
 /* -------------------------------------------------- */
