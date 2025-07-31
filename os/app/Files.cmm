@@ -56,22 +56,22 @@ public char[] mp3FilesGetPath(int n) {
 }
 
 
-#define MAX_TAGS   12
+#define MAX_TAGS   13
 #define TAG_LEN    16
 #define TAG_LEN_PLUS2 18
 
 char[][] tags = array(MAX_TAGS, TAG_LEN);
-char[] buf = array(TAG_LEN_PLUS2);
+char[] buftag = array(TAG_LEN_PLUS2);
 int numTag = 0;
 
 
 // “Norm, ×15 を tags 配列にセットする
 void tagsSetDefault()
 {
-  for (int i = 0; i < 12; i= i+1) {
+  for (int i = 0; i < 13; i= i+1) {
     strCpy(tags[i], "Norm,");   // 末尾の ‘,’ もそのまま保存
   }
-  numTag = 12;
+  numTag = 13;
 }
 
 
@@ -93,8 +93,8 @@ public char[][] tagsLoadFromTxt(char[] listFile)
   int  j  = 0;                        // 列インデックス        
   char   ch;                          // 読み取った文字        
 
-  for ( ; i < MAX_TAGS && read(fd, buf, 1) == 1 ; ) {
-    ch = buf[0];                      // 取り出した 1 文字     
+  for ( ; i < MAX_TAGS && read(fd, buftag, 1) == 1 ; ) {
+    ch = buftag[0];                      // 取り出した 1 文字     
     if (ch == '\r') {                 
       continue;
     }
@@ -121,3 +121,73 @@ public char[][] tagsLoadFromTxt(char[] listFile)
 }
 
 
+
+#define PL_NAME_LEN    13               
+#define MAX_PLAYLIST 12
+#define PL_BUF_LEN     16    
+
+char[][] playlistNames = array(MAX_PLAYLIST, PL_NAME_LEN);
+
+int mp3FilesFindIndex(char[] name)
+{
+    int idx = 1;
+    char[] n;
+    while ((n = mp3FilesGetName(idx)) != null) {
+        if (strCmp(n, name) == 0) return idx;  
+        idx = idx + 1;
+    }
+    return -1;                            
+}
+/*--------------------------------------------------------------*/
+/* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
+/*   読み込んだファイル名を playlistNames[] に保存し，           */
+/*   同時に曲インデックスを playList[] に変換               */
+/*--------------------------------------------------------------*/
+char[] bufPlayList = array(PL_BUF_LEN);
+int[] playList = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+
+public int[] playlistLoadFromTxt(char[] listFile)
+{
+    int playListCount = 0;
+    int fd = open(listFile, READ_MODE);
+    if (fd < 0) {                              
+        fd = creat(listFile);
+        close(fd);
+        playListCount = 0;
+        return playList;
+    }
+    int  i = 0, j = 0;
+    char ch;
+
+    for ( ; i < MAX_PLAYLIST && read(fd, bufPlayList, 1) == 1 ; ) {
+        ch = bufPlayList[0];
+
+        if (ch == '\r') continue;            
+
+        if (ch == '\n') {                    
+            playlistNames[i][j] = '\0';
+            playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+            if (playList[i] != -1) i = i + 1;  
+            j = 0;                          
+            continue;
+        }
+
+        if (j < PL_NAME_LEN - 1) {            
+            playlistNames[i][j] = ch;
+            j = j + 1;
+        }
+    }
+    // ファイル末尾が改行無しで終わった場合の処理 
+    if (j > 0 && i < MAX_PLAYLIST) {
+        playlistNames[i][j] = '\0';
+        playList[i]   = mp3FilesFindIndex(playlistNames[i]);
+        if (playList[i] != -1) i = i + 1;
+    }
+    close(fd);
+    playListCount = i;
+    for (int k = playListCount; k < MAX_PLAYLIST; k = k + 1) {
+        playList[k] = -1;
+    }
+    return playList;
+}

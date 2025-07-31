@@ -74,7 +74,7 @@ int tagTargetSong = 0;
 int[] historyList = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int historyCount = 0;
 int playListCount = 0;
-int[] playList = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
+int[] playList = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 //曲選択画面
 int listOffset2 = 0;   
 int listOffset3 = 0;  
@@ -82,8 +82,6 @@ int listOffset4 = 0;
 int listOffset8 = 0;
 int listOffset9 = 0;
 int listOffset10 = 0;
-
-
 
 void asta(int y) {
   locateXY(0, y);
@@ -120,62 +118,20 @@ void addHistory(int songIndex) {
 
 char[][] playlistNames = array(MAX_PLAYLIST, PL_NAME_LEN);
 
-int mp3FilesFindIndex(char[] name)
+int countArray(int[] List, int maxLen)
 {
-    int idx = 1;
-    char[] n;
-    while ((n = mp3FilesGetName(idx)) != null) {
-        if (strCmp(n, name) == 0) return idx;  
-        idx = idx + 1;
+    int count = 0;
+    for (int i = 0; i < maxLen; i = i + 1) {
+        if (List[i] == -1) {
+            break;
+        }
+        count = count + 1;
     }
-    return -1;                            
+    return count;
 }
 
-/*--------------------------------------------------------------*/
-/* プレイリストを読み込み（無ければ空ファイルを作って終了）      */
-/*   読み込んだファイル名を playlistNames[] に保存し，           */
-/*   同時に曲インデックスを playList[] に変換               */
-/*--------------------------------------------------------------*/
-char[] buf = array(PL_BUF_LEN);
-void playlistLoadFromTxt(char[] listFile)
-{
-    int fd = open(listFile, READ_MODE);
-    if (fd < 0) {                              
-        fd = creat(listFile);
-        close(fd);
-        playListCount = 0;
-        return;
-    }
-    int  i = 0, j = 0;
-    char ch;
 
-    for ( ; i < MAX_PLAYLIST && read(fd, buf, 1) == 1 ; ) {
-        ch = buf[0];
 
-        if (ch == '\r') continue;            
-
-        if (ch == '\n') {                    
-            playlistNames[i][j] = '\0';
-            playList[i]   = mp3FilesFindIndex(playlistNames[i]);
-            if (playList[i] != -1) i = i + 1;  
-            j = 0;                          
-            continue;
-        }
-
-        if (j < PL_NAME_LEN - 1) {            
-            playlistNames[i][j] = ch;
-            j = j + 1;
-        }
-    }
-    // ファイル末尾が改行無しで終わった場合の処理 
-    if (j > 0 && i < MAX_PLAYLIST) {
-        playlistNames[i][j] = '\0';
-        playList[i]   = mp3FilesFindIndex(playlistNames[i]);
-        if (playList[i] != -1) i = i + 1;
-    }
-    close(fd);
-    playListCount = i;
-}
 void addPlayList(int songIdx)
 {
     if (playListCount >= MAX_PLAYLIST) return;
@@ -188,37 +144,9 @@ void addPlayList(int songIdx)
     playListCount = playListCount + 1;
 }
 
-
-/*-------------------------------------------------------------*/
-/*  デバッグ用 : 現在のプレイリスト内容をシリアルへ出力        */
-/*-------------------------------------------------------------*/
-void dbgDumpPlayList(char[] tag)          /* tag は区別用ラベル */
-{
-    dbgPutStr("---- PlayList dump "); 
-    dbgPutStr(tag); 
-    dbgPutStr(" ----\n");
-
-    dbgPutStr("  count = ");
-    //dbgPutDec(playListCount); 
-    dbgPutStr("\n");
-
-    for (int k = 0; k < playListCount; k = k + 1) {
-        dbgPutStr("  [");
-        //dbgPutDec(k); 
-        dbgPutStr("] idx=");
-        //dbgPutDec(playList[k]);
-
-        dbgPutStr("  name=");
-        dbgPutStr(playlistNames[k]);      /* 改行は入っていないので…   */
-        dbgPutStr("\n");
-    }
-    dbgPutStr("-------------------------------\n");
-}
-
 // playlist から 1 曲削除 
 void removePlayList(int songIdx)
 {
-    dbgDumpPlayList("before-remove");
     int i = 0;
     while (i < playListCount && playList[i] != songIdx) i=i+1;
 
@@ -233,7 +161,6 @@ void removePlayList(int songIdx)
     //末尾をクリア
     playList[playListCount] = -1;
     playlistNames[playListCount][0] = '\0';
-    dbgDumpPlayList("after-remove"); 
 }
 
 
@@ -366,8 +293,8 @@ public void shellMain() {
   spiResetLcd();      // sleepを使用するので
   spiResetMp3();      // プロセスが実行する
   mp3FilesInit();     // ファイル一覧を作る
-  playlistLoadFromTxt(PL_FILE);
-
+  playList = playlistLoadFromTxt(PL_FILE);
+  playListCount = countArray(playList, MAX_PLAYLIST);
   currentTag = tagsLoadFromTxt("/taglist.txt");
 
   demoScreen(currentScreen, kersol, SongIndex);
@@ -795,12 +722,14 @@ public void shellMain() {
         currentScreen = 0;
         kersol = 1;
         listOffset9 = 0;
-        playlistLoadFromTxt(PL_FILE);
+        playList = playlistLoadFromTxt(PL_FILE);
+        playListCount = countArray(playList, MAX_PLAYLIST);
         demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 2) {            
         playlistMain(playlistNames);
-        playlistLoadFromTxt(PL_FILE);
+        playList = playlistLoadFromTxt(PL_FILE);
+        playListCount = countArray(playList, MAX_PLAYLIST);
         currentScreen = 0;
         kersol = 1;
         listOffset9 = 0;
