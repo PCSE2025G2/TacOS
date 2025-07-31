@@ -10,3 +10,5 @@ public
     char[][] tagsLoadFromTxt(char[] listFile);
 public
     void tagsSaveToTxt(char[] listFile);
+public
+    int[] playlistLoadFromTxt(char[] listFile);
