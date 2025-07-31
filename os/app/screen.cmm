@@ -147,7 +147,7 @@ char[][][] screenDat = {
     "Back",
     "Gothic",
     "Bold",
-    "Itaric",
+    "Italic",
     "outline",
     "",
     ""
