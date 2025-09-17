@@ -94,6 +94,11 @@ int currentListIndex(int scr, int kersol) {
   if (scr == 2)       off = listOffset2;
   else if (scr == 3)  off = listOffset3;
   else if (scr == 4)  off = listOffset4;
+  if (scr == 4) {
+    int i = off + (kersol - 2);     
+    if (i >= 0 && i < playListCount) return playList[i];
+    return -1;
+  }
   return off + (kersol - 2) + 1;
 }
 
@@ -129,7 +134,6 @@ int countArray(int[] List, int maxLen)
     }
     return count;
 }
-
 
 
 void addPlayList(int songIdx)
@@ -297,6 +301,7 @@ public void shellMain() {
   playListCount = countArray(playList, MAX_PLAYLIST);
   currentTag = tagsLoadFromTxt("/taglist.txt");
 
+
   demoScreen(currentScreen, kersol, SongIndex);
 
   for (;;) {
@@ -390,13 +395,13 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 3 &&
-              (listOffset3 + 6) >= historyCount - 1) {
+              (listOffset3 + 6) >= historyCount) {
           listOffset3 = 0;
           kersol = 2;
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 4 &&
-          mp3FilesGetName(listOffset4 + 6 + 1) == null) {
+              (listOffset4 + 6) >= playListCount) {
           listOffset4 = 0;
           kersol = 2;
           demoScreen(currentScreen, kersol, SongIndex);
@@ -420,6 +425,22 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
 
+      else if (currentScreen == 3 && historyCount <= 6) {  
+          int lastRow = historyCount + 1; 
+          if (historyCount > 0) {
+              if (kersol < lastRow) kersol = kersol + 1;
+              else                   kersol = 2;    
+              demoScreen(currentScreen, kersol, SongIndex);
+          }
+      }
+      else if (currentScreen == 4 && playListCount <= 6) { 
+          int lastRow = playListCount + 1;
+          if (playListCount > 0) {
+              if (kersol < lastRow) kersol = kersol + 1;
+              else { listOffset4 = 0; kersol = 2; } 
+              demoScreen(currentScreen, kersol, SongIndex);
+          }
+      }
 
       /* ---- スクロール ---- */
       else if (kersol == 7 && currentScreen == 2 &&
@@ -428,12 +449,12 @@ public void shellMain() {
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 3 &&
-              (listOffset3 + 7) < historyCount) {
+              (listOffset3 + 6) < historyCount) {
           listOffset3 = listOffset3 + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
       else if (kersol == 7 && currentScreen == 4 &&
-          mp3FilesGetName(listOffset4 + 6 + 1) != null) {
+              (listOffset4 + 6) < playListCount) {
           listOffset4 = listOffset4 + 1;
           demoScreen(currentScreen, kersol, SongIndex);
       }
@@ -717,40 +738,55 @@ public void shellMain() {
   /* =================================
   currentScreen == 9 : Playlist edit
   ================================= */
-    else if (currentScreen == 9) {
-      if (kersol == 1) {                  // Back
-        currentScreen = 0;
-        kersol = 1;
-        listOffset9 = 0;
-        playList = playlistLoadFromTxt(PL_FILE);
-        playListCount = countArray(playList, MAX_PLAYLIST);
-        demoScreen(currentScreen, kersol, SongIndex);
+  else if (currentScreen == 9) {
+    if (kersol == 1) {                  // Back
+      currentScreen = 0;
+      kersol = 1;
+      listOffset9 = 0;
+      playList = playlistLoadFromTxt(PL_FILE);
+      playListCount = countArray(playList, MAX_PLAYLIST);
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol == 2) {             // Register
+      for (int i = 0; i < MAX_PLAYLIST; i = i + 1) {
+        playlistNames[i][0] = '\0';
       }
-      else if (kersol == 2) {            
-        playlistMain(playlistNames);
-        playList = playlistLoadFromTxt(PL_FILE);
-        playListCount = countArray(playList, MAX_PLAYLIST);
-        currentScreen = 0;
-        kersol = 1;
-        listOffset9 = 0;
-        demoScreen(currentScreen, kersol, SongIndex);
+      for (int i = 0; i < playListCount && i < MAX_PLAYLIST; i = i + 1) {
+        int idx = playList[i];
+        if (idx >= 0) {
+          strCpy(playlistNames[i], mp3FilesGetName(idx));
+        }
       }
-      else if (kersol >= 3) {                   
-          int songIdx = listOffset9 + (kersol - 2) + 1;
-          if (mp3FilesGetName(songIdx) != null) {
-              boolean inPL = false;
-              for (int i = 0; i < playListCount; i = i + 1)
-                  if (playList[i] == songIdx) { inPL = true; break; }
 
-              if (inPL) {
-                  removePlayList(songIdx);        // 削除して「-」に戻す 
-              } else {
-                  addPlayList(songIdx);          
-              }
-              demoScreen(currentScreen, kersol, SongIndex);   
-          }
+      playlistMain(playlistNames); 
+      playList = playlistLoadFromTxt(PL_FILE);
+      playListCount = countArray(playList, MAX_PLAYLIST);
+
+      currentScreen = 0;
+      kersol = 1;
+      listOffset9 = 0;
+      demoScreen(currentScreen, kersol, SongIndex);
+    }
+    else if (kersol >= 3) {           
+      int songIdx = listOffset9 + (kersol - 2) + 1;
+      if (mp3FilesGetName(songIdx) != null) {
+        boolean inPL = false;
+        for (int i = 0; i < playListCount; i = i + 1)
+          if (playList[i] == songIdx) { inPL = true; break; }
+
+        if (inPL) {
+          removePlayList(songIdx);    
+        } else {
+          addPlayList(songIdx);       
+        }
+
+        playlistMain(playlistNames);
+
+        demoScreen(currentScreen, kersol, SongIndex);
       }
     }
+  }
+
 
   /* ============================
   currentScreen == 10 : Tag menu
