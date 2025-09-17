@@ -23,7 +23,7 @@ char[][][] screenDat = {
   },
   // 2.Song select（曲選択）画面
   {
-    "Song selec",
+    "Song select",
     "Back",
     "",
     "",
@@ -145,10 +145,10 @@ char[][][] screenDat = {
   {
     "Format",
     "Back",
-    "Gothic",
+    "Normal",
     "Bold",
     "Italic",
-    "outline",
+    "Outline",
     "",
     ""
   }

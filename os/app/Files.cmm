@@ -116,8 +116,30 @@ public char[][] tagsLoadFromTxt(char[] listFile)
     i = i + 1;
   }
   close(fd);
-  numTag = i;                        
-  return tags;      // tagsを返す 
+  numTag = i;
+
+  int songCount = 0;
+  while (mp3FilesGetName(songCount + 1) != null) {
+    songCount = songCount + 1;             
+  }
+  if (songCount > MAX_TAGS) songCount = MAX_TAGS;
+
+  boolean patched = false;
+  for (int k = 0; k < songCount; k = k + 1) {
+    if (k >= numTag || tags[k] == null || tags[k][0] == '\0') {
+      strCpy(tags[k], "Norm,");             
+      patched = true;
+    }
+  }
+  for (int k = songCount; k < MAX_TAGS; k = k + 1) {
+    tags[k][0] = '\0';
+  }
+  numTag = songCount;
+  if (patched) {
+    tagMain(tags);        
+  }
+
+  return tags;
 }
 
 
